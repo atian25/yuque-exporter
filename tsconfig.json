@@ -1,0 +1,16 @@
+{
+  "extends": "@artus/tsconfig",
+  "compilerOptions": {
+    "module": "ES2022",
+    "target": "ES2022",
+    "outDir": "dist",
+    "sourceMap": false,
+    "inlineSourceMap": true,
+    "noUnusedLocals": false,
+    "moduleResolution": "node",
+    "skipLibCheck": true
+  },
+  "include": [
+    "./src/**/*",
+  ],
+}

@@ -9,3 +9,6 @@ run/
 npm-debug.log
 *-lock.json
 *-lock.yaml
+apify_storage
+crawlee_storage
+storage
