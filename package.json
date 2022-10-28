@@ -1,0 +1,30 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "this is an example",
+  "author": "TZ <atian25@qq.com>",
+  "type": "module",
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-egg": "^12",
+    "c8": "^7",
+    "mocha": "^10"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "mocha test/**/*.test.js",
+    "cov": "c8 --reporter=html npm run test"
+  },
+  "files": [
+    "lib",
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
+}

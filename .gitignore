@@ -1,0 +1,11 @@
+node_modules/
+coverage/
+logs/
+.idea/
+.vscode/
+run/
+.DS_Store
+*.swp
+npm-debug.log
+*-lock.json
+*-lock.yaml

@@ -1,0 +1,11 @@
+{
+  "extends": "eslint-config-egg",
+  "parserOptions": {
+    "sourceType": "module"
+  },
+  "ignorePatterns": [
+    "dist",
+    "coverage",
+    "node_modules"
+  ]
+}
