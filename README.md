@@ -15,7 +15,6 @@
 
 需提前申请语雀 TOKEN，请参考[文档](https://www.yuque.com/yuque/developer/api#785a3731)。
 
-
 ```bash
 $ npm i
 
@@ -23,6 +22,12 @@ $ YUQUE_TOKEN=<your token> npm start
 
 $ ls storage
 ```
+
+## 技术内幕
+
+`调用语雀 API -> 存储所有元数据 -> 根据 TOC 构建本地目录 -> 文件内容处理（下载图片、替换链接等）`
+
+https://www.yuque.com/yuque/developer/api
 
 ## TODO List
 
