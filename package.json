@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@artus/tsconfig": "^1.0.1",
+    "@types/mocha": "^10.0.0",
     "@types/node": "^18.11.7",
     "c8": "^7",
     "eslint": "^8",

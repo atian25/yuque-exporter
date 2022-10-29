@@ -72,7 +72,7 @@ router.addHandler('repo_detail', async ctx => {
   const toc_yml = ctx.json.data.toc_yml;
   const toc = normalizeToc(yaml.parse(toc_yml));
 
-  log.info(request.loadedUrl);
+  // log.info(request.loadedUrl);
 
   // TODO: parse toc and mkdir
   await saveToStorage(`${namespace}/toc.json`, toc);
@@ -148,7 +148,7 @@ function normalizeToc(toc) {
 
   for (const item of toc) {
     if (!item.parent_uuid) continue;
-    const paths = [];
+    const paths: string[] = [];
     let parent = mapping[item.parent_uuid];
     while (parent) {
       if (parent.paths) {
