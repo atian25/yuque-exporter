@@ -1,16 +1,44 @@
-# Node.js Repository Template
+# yuque-exporter
 
-{{description}}
+用于批量导出语雀文档。
 
-[![NPM version](https://img.shields.io/npm/v/{{name}}.svg?style=flat-square)](https://npmjs.org/package/{{name}})
-[![NPM quality](http://npm.packagequality.com/shield/{{name}}.svg?style=flat-square)](http://packagequality.com/#?package={{name}})
-[![NPM download](https://img.shields.io/npm/dm/{{name}}.svg?style=flat-square)](https://npmjs.org/package/{{name}})
+## 为什么？
 
-[![Continuous Integration](https://github.com/{{org}}/{{name}}/actions/workflows/nodejs.yml/badge.svg)](https://github.com/{{org}}/{{name}}/actions/workflows/nodejs.yml)
-[![Test coverage](https://img.shields.io/codecov/c/github/{{org}}/{{name}}.svg?style=flat-square)](https://codecov.io/gh/{{org}}/{{name}})
+语雀的定位改变为`工具`，而不在是`内容社区`，相应的新的付费策略，也会造成了免费用户无法继续用语雀作为自己的个人博客。（相关讨论[传送门](https://www.zhihu.com/question/562238887)）
 
-## Usage
+为了让创作者有更多的选择，便抽空写了该项目，可以方便的把语雀的内容批量导出为本地 Markdown。
+
+> 语雀还是很开放的，本项目开发过程中，也收到了语雀的同学的不少指导和建议。
+
+
+## 如何使用
+
+需提前申请语雀 TOKEN，请参考[文档](https://www.yuque.com/yuque/developer/api#785a3731)。
+
 
 ```bash
-$ npm i {{name}}
+$ npm i
+
+$ YUQUE_TOKEN=<your token> npm start
+
+$ ls storage
 ```
+
+## TODO List
+
+- 目录结构
+  - [ ] 文件名用 slug 还是中文名？
+  - [ ] 文件名存在非法字符的特殊处理
+  - [ ] 草稿文件写入到 draft 目录
+  - [ ] 优化 TOC 的处理
+  - [ ] 如何排序？
+- 正文的处理
+  - [ ] 支持 frontmatter
+  - [ ] 下载图片及画板为本地文件
+  - [ ] 替换文档链接为相对链接
+- 增强特性
+  - [ ] 支持多账号和团队文档的下载
+  - [ ] 对 obsidian 的更多支持
+- 其他
+  - [ ] API 调用受限时提示用户（目前 5000 次/小时）
+  - [ ] 单元测试

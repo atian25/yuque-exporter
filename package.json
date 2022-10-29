@@ -4,24 +4,38 @@
   "description": "this is an example",
   "author": "TZ <atian25@qq.com>",
   "type": "module",
+  "dependencies": {
+    "crawlee": "^3.0.0",
+    "yaml": "^2.1.3"
+  },
   "devDependencies": {
+    "@artus/tsconfig": "^1.0.1",
+    "@types/node": "^18.11.7",
+    "c8": "^7",
     "eslint": "^8",
     "eslint-config-egg": "^12",
-    "c8": "^7",
-    "mocha": "^10"
+    "mocha": "^10",
+    "ts-node": "^10.8.0",
+    "typescript": "^4.7.4"
   },
   "scripts": {
-    "lint": "eslint .",
-    "test": "mocha test/**/*.test.js",
-    "cov": "c8 --reporter=html npm run test"
+    "start": "npm run start:dev",
+    "start:prod": "node dist/main.js",
+    "start:dev": "ts-node-esm -T src/main.ts",
+    "build": "tsc",
+    "lint": "eslint ./src --ext .ts",
+    "lint:fix": "eslint ./src --ext .ts --fix",
+    "test": "mocha --loader=ts-node/esm/transpile-only test/**/*.test.ts",
+    "cov": "c8 npm test"
   },
   "files": [
-    "lib",
+    "dist",
     "index.js"
   ],
+  "homepage": "https://github.com/atian25/yuque-exporter",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git@github.com:atian25/yuque-exporter.git"
   },
   "publishConfig": {
     "access": "public"
