@@ -1,12 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-import { createCheerioRouter, KeyValueStore } from 'crawlee';
+import { createCheerioRouter } from 'crawlee';
 import yaml from 'yaml';
 
-const HOST = 'https://www.yuque.com/api/v2';
-const STORAGE_PATH = fileURLToPath(new URL('../storage/yuque', import.meta.url));
+import { host, root } from './config.js';
+import { parser } from './parser.js';
 
 export const router = createCheerioRouter();
 
@@ -21,10 +20,9 @@ router.addDefaultHandler(async ctx => {
 
   await crawler.addRequests([
     {
-      url: `${HOST}/users/${userInfo.login}/repos`,
+      url: `${host}/users/${userInfo.login}/repos`,
       label: 'repos',
       userData: {
-        host: HOST,
         user: userInfo.login,
       },
     },
@@ -34,14 +32,12 @@ router.addDefaultHandler(async ctx => {
 router.addHandler('repos', async ctx => {
   const { log, crawler, request } = ctx;
 
-  const userData = request.userData;
-  const { host, user } = userData;
   const repos = ctx.json.data;
 
   log.info(`Syncing ${repos.length} repos`);
 
   for (const repo of repos) {
-    const { type, name, slug, namespace } = repo;
+    const { type, name, namespace } = repo;
 
     if (type !== 'Book') {
       log.warning(`Skip repo: ${name}(${repo.namespace}) due to unsupported type ${type}`);
@@ -56,20 +52,15 @@ router.addHandler('repos', async ctx => {
       {
         url: `${host}/repos/${namespace}`,
         label: 'repo_detail',
-        userData: {
-          ...userData,
-          namespace,
-        },
       },
     ]);
   }
 });
 
 router.addHandler('repo_detail', async ctx => {
-  const { log, crawler, request } = ctx;
-  const userData = request.userData;
-  const { host, namespace } = userData;
-  const toc_yml = ctx.json.data.toc_yml;
+  const { log, crawler } = ctx;
+  const { toc_yml, namespace } = ctx.json.data;
+
   const toc = normalizeToc(yaml.parse(toc_yml));
 
   // log.info(request.loadedUrl);
@@ -78,7 +69,7 @@ router.addHandler('repo_detail', async ctx => {
   await saveToStorage(`${namespace}/toc.json`, toc);
 
   for (const item of toc) {
-    const paths = [ STORAGE_PATH, namespace, ...item.paths || [] ].join('/');
+    const paths = [ root, namespace, ...item.paths || [] ].join('/');
     switch (item.type) {
       case 'TITLE': {
         await fs.mkdir(`${paths}/${item.title}`, { recursive: true });
@@ -91,7 +82,6 @@ router.addHandler('repo_detail', async ctx => {
             url: `${host}/repos/${namespace}/docs/${item.url}`,
             label: 'doc_detail',
             userData: {
-              ...userData,
               paths,
             },
           },
@@ -118,11 +108,12 @@ router.addHandler('repo_detail', async ctx => {
 
 router.addHandler('doc_detail', async ctx => {
   const { log, crawler, request } = ctx;
-  const userData = request.userData;
-  const { paths } = userData;
+  const { paths } = request.userData;
   const doc = ctx.json.data;
 
-  log.info(`Syncing doc: ${doc.title}(${doc.slug}) to ${paths.substring(STORAGE_PATH.length + 1)}/${doc.slug}.md`);
+  await parser(doc.body, doc);
+
+  log.info(`Syncing doc: ${doc.title}(${doc.slug}) to ${paths.substring(root.length + 1)}/${doc.slug}.md`);
 
   // TODO: parse markdown with remark
   // TODO: append frontmatter
@@ -133,7 +124,7 @@ router.addHandler('doc_detail', async ctx => {
 });
 
 async function saveToStorage(filePath, content) {
-  filePath = path.resolve(STORAGE_PATH, filePath);
+  filePath = path.resolve(root, filePath);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   content = typeof content === 'string' || Buffer.isBuffer(content) ? content : JSON.stringify(content, null, 2);
   await fs.writeFile(filePath, content, 'utf-8');

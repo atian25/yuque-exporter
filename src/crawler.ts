@@ -1,5 +1,6 @@
 import assert from 'assert/strict';
 import { CheerioCrawler } from 'crawlee';
+import { host } from './config.js';
 import { router } from './routes.js';
 
 assert(process.env.YUQUE_TOKEN, 'Missing YUQUE_TOKEN');
@@ -19,5 +20,5 @@ export const crawler = new CheerioCrawler({
 });
 
 export async function start() {
-  await crawler.run([ 'https://www.yuque.com/api/v2/user' ]);
+  await crawler.run([ `${host}/user` ]);
 }
