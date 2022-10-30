@@ -11,7 +11,7 @@ export async function start() {
   // crawl yuque data
   await crawler.run([ `${host}/user` ]);
 
-  // parse yuque data
+  // gen yuque data
 
 }
 
