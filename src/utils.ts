@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import path from 'path';
 import yaml from 'yaml';
 
 export async function readJSON(p: string, isYAML = false) {
@@ -14,4 +15,8 @@ export async function exists(p: string) {
     if (err.code === 'ENOENT') return false;
     throw err;
   }
+}
+
+export async function mkdir(...paths) {
+  await fs.mkdir(path.join(...paths), { recursive: true });
 }

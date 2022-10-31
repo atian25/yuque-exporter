@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { readJSON, exists } from './utils';
+import { readJSON, exists, mkdir } from './utils.js';
+import tocParser from './parser/toc.js';
 
 export class Builder {
   private docMapping = {};
@@ -11,13 +12,22 @@ export class Builder {
   ) {}
 
   async build() {
+    const tasks = [];
     const repos = await this.loadRepo();
     for (const repo of repos) {
       const docs = await readJSON(path.join(this.src, repo.namespace, 'docs.json'));
+      const toc = await readJSON(path.join(this.src, repo.namespace, 'toc.yaml'), true);
+      const tocTree = tocParser(toc);
+      for (const group of tocTree.groups()) {
+        console.log([ this.dist, repo.namespace, group ].join('/'));
+        await mkdir(this.dist, repo.namespace, group);
+        // tasks.push(() => mkdir(this.dist, repo.namespace, group));
+      }
     }
-    for (const repo of repos) {
-      await this.buildRepo(repo);
-    }
+    await Promise.all(tasks);
+    // for (const repo of repos) {
+    //   await this.buildRepo(repo);
+    // }
   }
 
   async collectMetadata() {
@@ -104,7 +114,7 @@ export class Builder {
       const p = path.join(this.src, dir, 'repos.json');
       if (!await exists(p)) continue;
       const repoInfo = JSON.parse(await fs.readFile(p, 'utf-8'));
-      repos.push(repoInfo);
+      repos.push(...repoInfo.filter(repo => repo.type === 'Book'));
     }
     return repos;
   }

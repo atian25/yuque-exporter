@@ -1,20 +1,8 @@
-import { remark } from 'remark';
 import { arrayToTree } from 'performant-array-to-tree';
 import crawl from 'tree-crawl';
 
-export async function parser(content, doc) {
-  remark()
-    // .use(() => tree => {
-    // console.log(tree);
-    // })
-    .process(content);
-  return doc;
-}
-
-// frontmatter: title, description, tags
-
 interface TocItem {
-  type: 'DOC' | 'UNCREATED_DOC' | 'META' | 'LINK';
+  type: 'TITLE' | 'DOC' | 'UNCREATED_DOC' | 'META' | 'LINK';
   title: string;
   uuid: string;
   parent_uuid?: string;
@@ -23,7 +11,7 @@ interface TocItem {
 interface TreeNode {
   children: TreeNode[];
 
-  type: 'ROOT' | 'DOC' | 'UNCREATED_DOC';
+  type: 'ROOT' | 'TITLE' | 'DOC' | 'UNCREATED_DOC';
   title: string;
   url: string;
   uuid: string;
@@ -34,7 +22,7 @@ interface TreeNode {
   filePath: string;
 }
 
-export function parseToc(toc: TocItem[]) {
+export default function parse(toc: TocItem[]) {
   const tocList = toc
     .filter(item => item.type !== 'META' && item.type !== 'LINK')
     .map(item => {
@@ -48,29 +36,45 @@ export function parseToc(toc: TocItem[]) {
     dataField: null,
   }) as TreeNode[];
 
-
   const tree = {
     type: 'ROOT',
     children: treeNodes,
+
     travel(fn: Parameters<typeof crawl<TreeNode>>[1]) {
       crawl<TreeNode>(tree as any, (node, ctx) => {
         if (node.type === 'ROOT') return;
         fn(node, ctx);
       }, { order: 'pre' });
     },
-    // * [Symbol.iterator]() {
-    //   crawl<TreeNode>(this, (node, ctx) => {
-    //     yield { node, ctx}
-    //   }, {});
-    // }
+
+    groups() {
+      const paths: string[] = [];
+      tree.travel(node => {
+        if (node.type === 'TITLE') {
+          paths.push(node.paths.join('/'));
+        }
+      });
+      return paths;
+    },
+
+    docs(): { title: string; slug: string; filePath: string }[] {
+      const result = [];
+      tree.travel(node => {
+        if (node.type === 'DOC') {
+          result.push({
+            title: node.title,
+            slug: node.url,
+            filePath: node.paths.join('/') + '.md',
+          });
+        }
+      });
+      return result;
+    },
   };
 
+  // calculate file paths, when duplicate then add index to suffix
   const duplicateMap = new Map<string, number>();
-
   tree.travel((node, ctx) => {
-    if (node.type === 'ROOT') return;
-
-    // calculate basename, when duplicate then add index to suffix
     const key = `${node.parent_uuid}/${node.type}/${node.title}`;
     const count = duplicateMap.get(key) || 0;
     if (count) {
