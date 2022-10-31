@@ -1,7 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-
-import yaml from 'yaml';
+import { readJSON, exists } from './utils';
 
 export class Builder {
   private docMapping = {};
@@ -108,21 +107,5 @@ export class Builder {
       repos.push(repoInfo);
     }
     return repos;
-  }
-}
-
-async function readJSON(p: string, isYAML = false) {
-  const content = await fs.readFile(p, 'utf-8');
-  return isYAML ? yaml.parse(content) : JSON.parse(content);
-}
-
-
-async function exists(p: string) {
-  try {
-    await fs.stat(p);
-    return true;
-  } catch (err) {
-    if (err.code === 'ENOENT') return false;
-    throw err;
   }
 }

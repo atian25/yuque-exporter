@@ -1,4 +1,6 @@
 import { remark } from 'remark';
+import { arrayToTree } from 'performant-array-to-tree';
+import crawl from 'tree-crawl';
 
 export async function parser(content, doc) {
   remark()
@@ -14,76 +16,93 @@ export async function parser(content, doc) {
 interface TreeData {
   title: string;
   type: string;
+  uuid: string;
+  parent_uuid?: string;
 }
 
-class TreeNode {
-  children: TreeNode[] = [];
-  constructor(public data?: TreeData) {}
-
-  add(data: TreeData) {
-    this.children.push(new TreeNode(data));
-  }
-
-  * [Symbol.iterator]() {
-    yield this;
-    for (const child of this.children) {
-      yield* child;
-    }
-  }
+interface TocItem {
+  type: 'DOC' | 'UNCREATED_DOC' | 'META' | 'LINK';
+  title: string;
+  uuid: string;
+  parent_uuid?: string;
 }
 
-export function parseToc(toc) {
-  const docMapping = {};
+interface TreeNode {
+  children: TreeNode[];
 
-  // build tree
-  const tocMapping = {};
-  for (const item of toc) {
-    tocMapping[item.uuid] = item;
-  }
+  type: 'ROOT' | 'DOC' | 'UNCREATED_DOC';
+  title: string;
+  url: string;
+  uuid: string;
+  parent_uuid: string;
 
-  const tree = new TreeNode();
-  for (const item of toc) {
-    if (item.type === 'META') continue;
-    const node = { type: item.type, title: item.title, uuid: item.uuid, children: [] };
+  basename: string;
+  paths: string[];
+}
 
-    if (!item.parent_uuid) {
-      tree.add(node);
-    } else {
-      tocMapping[item.parent_uuid].children.push(node);
-    }
-  }
+export function parseToc(toc: TocItem[]) {
+  const tocList = toc
+    .filter(item => item.type !== 'META' && item.type !== 'LINK')
+    .map(item => {
+      return pick(item, [ 'type', 'title', 'uuid', 'parent_uuid', 'url' ]);
+    });
 
-  // traverse tree
-  const traverse = (node, paths = []) => {
+  const treeNodes = arrayToTree(tocList, {
+    id: 'uuid',
+    parentId: 'parent_uuid',
+    nestedIds: false,
+    dataField: null,
+  }) as TreeNode[];
 
+
+  const tree = {
+    type: 'ROOT',
+    children: treeNodes,
+    travel(fn: Parameters<typeof crawl<TreeNode>>[1]) {
+      crawl<TreeNode>(tree as any, (node, ctx) => {
+        if (node.type === 'ROOT') return;
+        fn(node, ctx);
+      }, { order: 'pre' });
+    },
+    // * [Symbol.iterator]() {
+    //   crawl<TreeNode>(this, (node, ctx) => {
+    //     yield { node, ctx}
+    //   }, {});
+    // }
   };
 
-  // switch (item.type) {
-  //   case 'TITLE': {
-  //     const node = { type: 'TITLE', title: item.title, children: [] };
-  //     tree.children.push(node);
-  //     break;
-  //   }
+  const duplicateMap = new Map<string, number>();
 
-  //   case 'DOC': {
-  //     const node = { type: 'DOC', doc: item.doc, children: [] };
-  //     tree.children.push(node);
-  //     break;
-  //   }
+  tree.travel((node, ctx) => {
+    if (node.type === 'ROOT') return;
 
-  //   case 'UNCREATED_DOC': {
-  //     const node = { type: 'UNCREATED_DOC', doc: item.doc, children: [] };
-  //     tree.children.push(node);
-  //     break;
-  //   }
+    // calculate basename, when duplicate then add index to suffix
+    const key = `${node.parent_uuid}/${node.type}/${node.title}`;
+    const count = duplicateMap.get(key) || 0;
+    if (count) {
+      node.basename = `${node.title} ${count}`;
+      duplicateMap.set(key, count + 1);
+    } else {
+      node.basename = node.title;
+      duplicateMap.set(key, 1);
+    }
 
-  //   case 'LINK': break;
+    if (node.type === 'DOC' || node.type === 'UNCREATED_DOC') {
+      node.basename += '.md';
+    }
 
-  //   case 'META': break;
+    node.paths = [ ...ctx.parent.paths || [], node.basename ];
 
-  //   default: {
-  //     console.warn('unknown type', item);
-  //     break;
-  //   }
-  // }
+    // console.log(`${' '.repeat(ctx.depth)} - ${node.title} - ${node.paths.join('/')}`);
+  });
+
+  return tree;
+}
+
+function pick<T>(obj: T, keys: string[]) {
+  const result = {};
+  for (const key of keys) {
+    result[key] = obj[key];
+  }
+  return result as T;
 }
