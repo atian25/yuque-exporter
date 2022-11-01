@@ -4,6 +4,8 @@ import PQueue from 'p-queue';
 
 import { readJSON, exists, mkdir, writeFile } from './utils.js';
 import { Toc } from './parser/toc.js';
+import { remark } from 'remark';
+import { visit } from 'unist-util-visit';
 
 export class Builder {
   private docMapping = {};
@@ -46,20 +48,34 @@ export class Builder {
           default:
             break;
         }
-
-        for (const node of docMapping.values()) {
-          this.taskQueue.add(() => this.buildDoc(node, docMapping));
-        }
-
       });
+
+      for (const node of docMapping.values()) {
+        this.taskQueue.add(() => this.buildDoc(node, docMapping));
+        break;
+      }
     }
   }
 
   async buildDoc(doc, docMapping) {
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     // console.log(doc, docMapping);
     const fullPath = path.join(this.dist, doc.namespace, `${doc.filePath}.md`);
     const docDetail = await readJSON(path.join(this.src, doc.namespace, 'docs', `${doc.url}.json`));
-    await writeFile(fullPath, JSON.stringify(doc, null, 2) + '\n' + docDetail.body);
+    const content = await remark()
+      .use(() => async tree => {
+        console.log('aaa');
+        await sleep(3000);
+        visit(tree, [ 'link', 'linkReference' ], function(node) {
+          (node as any).url += 'xxxxx';
+        });
+      })
+      .use(() => tree => {
+        console.log('bbb');
+      })
+      .process(docDetail.body);
+    console.log('ccc');
+    await writeFile(fullPath, JSON.stringify(doc, null, 2) + '\n' + content);
     // md ast
     // replace link with local link
     // replace image with local image
