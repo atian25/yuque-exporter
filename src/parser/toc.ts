@@ -1,6 +1,7 @@
 import { arrayToTree } from 'performant-array-to-tree';
 import crawl from 'tree-crawl';
 
+// TODO: remove this type
 interface TocItem {
   type: 'TITLE' | 'DOC' | 'UNCREATED_DOC' | 'META' | 'LINK';
   title: string;
@@ -9,17 +10,18 @@ interface TocItem {
   url?: string;
 }
 
-interface TreeNode {
-  children: TreeNode[];
-
-  type: 'TITLE' | 'DOC' | 'UNCREATED_DOC';
+interface Item {
+  type: 'TITLE' | 'DOC' | 'UNCREATED_DOC' | 'LINK';
   title: string;
+  filePath: string;
   url?: string;
+  namespace?: string;
+}
+
+interface TreeNode extends Item {
+  children: TreeNode[];
   uuid: string;
   parent_uuid?: string;
-
-  namespace?: string;
-  filePath: string;
 }
 
 export class Toc {
@@ -27,7 +29,7 @@ export class Toc {
     this.init();
   }
 
-  travel(fn: (node: TreeNode, ctx: crawl.Context<TreeNode>) => void) {
+  travel<T = Item>(fn: (node: T, ctx: crawl.Context<T>) => void) {
     crawl(this as any, (node, ctx) => {
       if (node === this) return;
       fn(node, ctx);
@@ -37,7 +39,8 @@ export class Toc {
   private init() {
     // calculate file paths, when duplicate then add index to suffix
     const duplicateMap = new Map<string, number>();
-    this.travel((node, ctx) => {
+
+    this.travel<TreeNode>((node, ctx) => {
       const key = `${node.parent_uuid}/${node.type}/${node.title}`;
       const count = duplicateMap.get(key) || 0;
       if (count) {
@@ -49,6 +52,7 @@ export class Toc {
       }
 
       if (ctx.parent.filePath) {
+        // TODO: sanitize-filename
         node.filePath = `${ctx.parent.filePath}/${node.filePath}`;
       }
 
@@ -56,10 +60,10 @@ export class Toc {
     });
   }
 
-  static parse(namespace, toc: TocItem[], docs: any) {
+  static parse(namespace: string, toc: TocItem[], docs: any) {
     // collect toc items
     const tocList = toc
-      .filter(item => item.type !== 'META' && item.type !== 'LINK')
+      .filter(item => item.type !== 'META')
       .map(item => {
         return pick(item, [ 'type', 'title', 'uuid', 'parent_uuid', 'url' ]);
       });

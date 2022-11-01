@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "crawlee": "^3.0.0",
+    "p-queue": "^7.3.0",
     "performant-array-to-tree": "^1.11.0",
     "remark": "^14.0.2",
     "sanitize-filename": "^1.6.3",

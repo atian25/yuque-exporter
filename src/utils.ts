@@ -20,3 +20,9 @@ export async function exists(p: string) {
 export async function mkdir(...paths) {
   await fs.mkdir(path.join(...paths), { recursive: true });
 }
+
+export async function writeFile(filePath: string, content) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  content = typeof content === 'string' || Buffer.isBuffer(content) ? content : JSON.stringify(content, null, 2);
+  await fs.writeFile(filePath, content, 'utf-8');
+}
