@@ -1,20 +1,14 @@
 import { readJSON } from '../src/utils.js';
-import tocParser from '../src/parser/toc.js';
+import { Toc } from '../src/parser/toc.js';
 
 describe('test/parser.test.js', () => {
   it('should praseToc', async () => {
+    const docs = await readJSON('./test/fixtures/docs.json');
     const toc = await readJSON('./test/fixtures/toc.yaml', true);
 
-    const tree = tocParser(toc);
+    const tree = Toc.parse('atian25/test', toc, docs);
     tree.travel((node, ctx) => {
-      console.log(`${' '.repeat(ctx.depth)} - ${node.title} - ${node.paths.join('/')}`);
+      console.log(`${' '.repeat(ctx.depth)} - ${node.title} - ${node.filePath}`);
     });
-
-    for (const group of tree.groups()) {
-      console.log(group);
-    }
-    for (const doc of tree.docs()) {
-      console.log(doc);
-    }
   });
 });

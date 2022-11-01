@@ -6,89 +6,91 @@ interface TocItem {
   title: string;
   uuid: string;
   parent_uuid?: string;
+  url?: string;
 }
 
 interface TreeNode {
   children: TreeNode[];
 
-  type: 'ROOT' | 'TITLE' | 'DOC' | 'UNCREATED_DOC';
+  type: 'TITLE' | 'DOC' | 'UNCREATED_DOC';
   title: string;
-  url: string;
+  url?: string;
   uuid: string;
-  parent_uuid: string;
+  parent_uuid?: string;
 
-  basename: string;
-  paths: string[];
+  namespace?: string;
   filePath: string;
 }
 
-export default function parse(toc: TocItem[]) {
-  const tocList = toc
-    .filter(item => item.type !== 'META' && item.type !== 'LINK')
-    .map(item => {
-      return pick(item, [ 'type', 'title', 'uuid', 'parent_uuid', 'url' ]);
+export class Toc {
+  private constructor(private namespace: string, private children: TreeNode[] = []) {
+    this.init();
+  }
+
+  travel(fn: (node: TreeNode, ctx: crawl.Context<TreeNode>) => void) {
+    crawl(this as any, (node, ctx) => {
+      if (node === this) return;
+      fn(node, ctx);
+    }, { order: 'pre' });
+  }
+
+  private init() {
+    // calculate file paths, when duplicate then add index to suffix
+    const duplicateMap = new Map<string, number>();
+    this.travel((node, ctx) => {
+      const key = `${node.parent_uuid}/${node.type}/${node.title}`;
+      const count = duplicateMap.get(key) || 0;
+      if (count) {
+        node.filePath = `${node.title} ${count}`;
+        duplicateMap.set(key, count + 1);
+      } else {
+        node.filePath = node.title;
+        duplicateMap.set(key, 1);
+      }
+
+      if (ctx.parent.filePath) {
+        node.filePath = `${ctx.parent.filePath}/${node.filePath}`;
+      }
+
+      node.namespace = this.namespace;
     });
+  }
 
-  const treeNodes = arrayToTree(tocList, {
-    id: 'uuid',
-    parentId: 'parent_uuid',
-    nestedIds: false,
-    dataField: null,
-  }) as TreeNode[];
-
-  const tree = {
-    type: 'ROOT',
-    children: treeNodes,
-
-    travel(fn: Parameters<typeof crawl<TreeNode>>[1]) {
-      crawl<TreeNode>(tree as any, (node, ctx) => {
-        if (node.type === 'ROOT') return;
-        fn(node, ctx);
-      }, { order: 'pre' });
-    },
-
-    groups() {
-      const paths: string[] = [];
-      tree.travel(node => {
-        if (node.type === 'TITLE') {
-          paths.push(node.paths.join('/'));
-        }
+  static parse(namespace, toc: TocItem[], docs: any) {
+    // collect toc items
+    const tocList = toc
+      .filter(item => item.type !== 'META' && item.type !== 'LINK')
+      .map(item => {
+        return pick(item, [ 'type', 'title', 'uuid', 'parent_uuid', 'url' ]);
       });
-      return paths;
-    },
 
-    docs(): { title: string; slug: string; filePath: string }[] {
-      const result = [];
-      tree.travel(node => {
-        if (node.type === 'DOC') {
-          result.push({
-            title: node.title,
-            slug: node.url,
-            filePath: node.paths.join('/') + '.md',
-          });
-        }
-      });
-      return result;
-    },
-  };
+    const treeNodes = arrayToTree(tocList, {
+      id: 'uuid',
+      parentId: 'parent_uuid',
+      nestedIds: false,
+      dataField: null,
+    }) as TreeNode[];
 
-  // calculate file paths, when duplicate then add index to suffix
-  const duplicateMap = new Map<string, number>();
-  tree.travel((node, ctx) => {
-    const key = `${node.parent_uuid}/${node.type}/${node.title}`;
-    const count = duplicateMap.get(key) || 0;
-    if (count) {
-      node.basename = `${node.title} ${count}`;
-      duplicateMap.set(key, count + 1);
-    } else {
-      node.basename = node.title;
-      duplicateMap.set(key, 1);
-    }
+    // collect draft items
+    const slugSet = new Set(tocList.map(item => item.url));
+    const draftNode = {
+      type: 'TITLE' as const,
+      uuid: 'draft',
+      title: '草稿箱',
+      children: docs.filter(doc => !slugSet.has(doc.slug)).map(doc => {
+        return {
+          type: 'DOC',
+          title: doc.title,
+          uuid: doc.id,
+          parent_uuid: 'draft',
+          url: doc.slug,
+        };
+      }),
+    };
 
-    node.paths = [ ...ctx.parent.paths || [], node.basename ];
-  });
-
-  return tree;
+    const tree = new Toc(namespace, [ ...treeNodes as any, draftNode as any ]);
+    return tree;
+  }
 }
 
 function pick<T>(obj: T, keys: string[]) {

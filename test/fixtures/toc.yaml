@@ -1,12 +1,12 @@
 - type: META
   count: 12
   display_level: 1
-  tail_type: UPDATED_AT
-  base_version_id: 256586787
+  tail_type: SLUG
+  base_version_id: 256814732
   published: true
   max_level: 1
-  last_updated_at: 2022-10-31T09:56:06.515Z
-  version_id: 256586817
+  last_updated_at: 2022-11-01T04:45:55.105Z
+  version_id: 256814863
 - type: DOC
   title: 前言
   uuid: '-EUICcuttghkHP0A'
@@ -73,7 +73,7 @@
   open_window: 0
   visible: 1
 - type: TITLE
-  title: 分组1
+  title: 分组2
   uuid: No6UkKTbVVS3PhDs
   url: ''
   prev_uuid: yyeSLQhYyyVM-rTP

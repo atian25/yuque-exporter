@@ -9,7 +9,13 @@ export async function start() {
   await store.drop();
 
   // crawl yuque data
-  await crawler.run([ `${host}/user` ]);
+  // await crawler.run([ `${host}/user` ]);
+  await crawler.run([
+    {
+      url: `${host}/repos/atian25/test`,
+      label: 'repo_detail',
+    },
+  ]);
 
   // gen yuque data
 

@@ -50,10 +50,6 @@ router.addHandler('repos', async ctx => {
       {
         url: `${host}/repos/${namespace}`,
         label: 'repo_detail',
-      }, {
-        url: `${host}/repos/${namespace}/docs`,
-        label: 'docs',
-        userData: { name, namespace },
       },
     ]);
   }
@@ -66,6 +62,14 @@ router.addHandler('repo_detail', async ctx => {
   log.info(`Syncing repo toc: ${name}(${namespace})`);
 
   await saveToStorage(`${namespace}/toc`, toc_yml, { contentType: 'text/yaml' });
+
+  await crawler.addRequests([
+    {
+      url: `${host}/repos/${namespace}/docs`,
+      label: 'docs',
+      userData: { name, namespace },
+    },
+  ]);
 });
 
 router.addHandler('docs', async ctx => {

@@ -1,10 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { readJSON, exists, mkdir } from './utils.js';
-import tocParser from './parser/toc.js';
+import { Toc } from './parser/toc.js';
 
 export class Builder {
   private docMapping = {};
+  private taskQueue = [];
 
   constructor(
     private readonly src: string,
@@ -12,99 +13,37 @@ export class Builder {
   ) {}
 
   async build() {
-    const tasks = [];
+    const docMapping = {};
+    const dirList = [];
+
     const repos = await this.loadRepo();
     for (const repo of repos) {
       const docs = await readJSON(path.join(this.src, repo.namespace, 'docs.json'));
       const toc = await readJSON(path.join(this.src, repo.namespace, 'toc.yaml'), true);
-      const tocTree = tocParser(toc);
-      for (const group of tocTree.groups()) {
-        console.log([ this.dist, repo.namespace, group ].join('/'));
-        await mkdir(this.dist, repo.namespace, group);
-        // tasks.push(() => mkdir(this.dist, repo.namespace, group));
-      }
+      const tocTree = Toc.parse(repo.namespace, toc, docs);
+      tocTree.travel(node => {
+        console.log(node.filePath);
+        if (node.type === 'TITLE') {
+          dirList.push(`${repo.namespace}/${node.filePath}`);
+        } else if (node.type === 'DOC') {
+          docMapping[`${repo.namespace}/${node.url}`] = node;
+        }
+      });
     }
-    await Promise.all(tasks);
-    // for (const repo of repos) {
-    //   await this.buildRepo(repo);
-    // }
+    // console.log(dirList);
+
   }
 
-  async collectMetadata() {
-    const repos = await this.loadRepo();
-    const docs = {};
-    for (const repo of repos) {
-      // collect docs metadata
-      const repoDocs = await readJSON(path.join(this.src, repo.namespace, 'docs.json'));
-      for (const doc of repoDocs) {
-        const key = `${repo.namespace}/${doc.slug}`;
-        docs[key] = doc;
-      }
-
-      // namespace/slug - paths/filename
-
-
-      // collect toc metadata
-      const repoToc = this.calaulateToc(await readJSON(path.join(this.src, repo.namespace, 'toc.yaml'), true));
-      for (const item of repoToc) {
-        switch (item.type) {
-          case 'TITLE': {
-            // create directory
-
-            break;
-          }
-
-          case 'DOC': {
-            break;
-          }
-
-          case 'UNCREATED_DOC': {
-            break;
-          }
-
-          case 'META': break;
-
-          default: {
-            console.warn('unknown type', item);
-            break;
-          }
-        }
-      }
-    }
+  createJob(...paths) {
+    this.taskQueue.push(() => mkdir(this.dist, ...paths));
   }
 
-  calaulateToc(toc) {
-    const mapping = {};
-    for (const item of toc) {
-      mapping[item.uuid] = item;
-    }
-
-    const duplicateMapping = new Map();
-
-    for (const item of toc) {
-      if (!item.parent_uuid) continue;
-      const paths: string[] = [];
-      let parent = mapping[item.parent_uuid];
-      while (parent) {
-        if (parent.paths) {
-          paths.push(...parent.paths);
-          break;
-        }
-        // check duplicate title
-        const count = duplicateMapping.get(parent.title);
-        if (!count) {
-          duplicateMapping.set(parent.title, 1);
-          paths.push(parent.title);
-        } else {
-          // if title is duplicate, then add index suffix to title
-          duplicateMapping.set(parent.title, count + 1);
-          paths.push(`${parent.title}-${count + 1}`);
-        }
-        parent = mapping[parent.parent_uuid];
-      }
-      item.paths = paths;
-    }
-    return toc;
+  async buildDoc(doc, docMapping) {
+    console.log(doc, docMapping);
+    // md ast
+    // replace link with local link
+    // replace image with local image
+    // write to file
   }
 
   async loadRepo() {
@@ -118,4 +57,9 @@ export class Builder {
     }
     return repos;
   }
+}
+
+function collectDraftDocs(docs, toc) {
+  const set = new Set(toc.filter(item => item.type === 'DOC').map(item => item.url));
+  return docs.filter(doc => !set.has(doc.slug));
 }
