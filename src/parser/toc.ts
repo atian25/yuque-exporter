@@ -1,5 +1,6 @@
 import { arrayToTree } from 'performant-array-to-tree';
-import crawl from 'tree-crawl';
+import { visit } from 'unist-util-visit';
+import { inspectNoColor } from 'unist-util-inspect';
 
 // TODO: remove this type
 interface TocItem {
@@ -29,19 +30,24 @@ export class Toc {
     this.init();
   }
 
-  travel<T = Item>(fn: (node: T, ctx: crawl.Context<T>) => void) {
-    crawl(this as any, (node, ctx) => {
-      if (node === this) return;
-      fn(node, ctx);
-    }, { order: 'pre' });
+  travel(fn: (node: Item, ctx: { index: number; parent?: Item }) => void) {
+    visit<Item>(this as any, (node, index, parent?: Item) => {
+      if (!parent) return;
+      fn(node, { index, parent });
+    });
+  }
+
+  inspect() {
+    return console.log(inspectNoColor(this.children));
   }
 
   private init() {
     // calculate file paths, when duplicate then add index to suffix
     const duplicateMap = new Map<string, number>();
 
-    this.travel<TreeNode>((node, ctx) => {
-      const key = `${node.parent_uuid}/${node.type}/${node.title}`;
+    this.travel((node, { parent }) => {
+      const { title, type, parent_uuid } = node as TreeNode;
+      const key = `${parent_uuid}/${type}/${title}`;
       const count = duplicateMap.get(key) || 0;
       if (count) {
         node.filePath = `${node.title} ${count}`;
@@ -51,9 +57,9 @@ export class Toc {
         duplicateMap.set(key, 1);
       }
 
-      if (ctx.parent.filePath) {
+      if (parent.filePath) {
         // TODO: sanitize-filename
-        node.filePath = `${ctx.parent.filePath}/${node.filePath}`;
+        node.filePath = `${parent.filePath}/${node.filePath}`;
       }
 
       node.namespace = this.namespace;

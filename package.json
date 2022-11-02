@@ -10,7 +10,7 @@
     "performant-array-to-tree": "^1.11.0",
     "remark": "^14.0.2",
     "sanitize-filename": "^1.6.3",
-    "tree-crawl": "^1.2.1",
+    "unist-util-inspect": "^7.0.1",
     "unist-util-visit": "^4.1.1",
     "yaml": "^2.1.3"
   },
@@ -32,7 +32,7 @@
     "build": "tsc",
     "lint": "eslint ./src --ext .ts",
     "lint:fix": "eslint ./src --ext .ts --fix",
-    "test": "mocha --loader=ts-node/esm/transpile-only test/**/*.test.ts",
+    "test": "mocha",
     "cov": "c8 npm test"
   },
   "files": [
