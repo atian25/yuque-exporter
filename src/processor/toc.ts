@@ -25,8 +25,8 @@ interface TreeNode extends Item {
   parent_uuid?: string;
 }
 
-export class Toc {
-  private constructor(private namespace: string, private children: TreeNode[] = []) {
+export class TocTree {
+  constructor(private namespace: string, private children: TreeNode[] = []) {
     this.init();
   }
 
@@ -65,42 +65,41 @@ export class Toc {
       node.namespace = this.namespace;
     });
   }
+}
 
-  static parse(namespace: string, toc: TocItem[], docs: any) {
-    // collect toc items
-    const tocList = toc
-      .filter(item => item.type !== 'META')
-      .map(item => {
-        return pick(item, [ 'type', 'title', 'uuid', 'parent_uuid', 'url' ]);
-      });
+export function processToc(namespace: string, toc: TocItem[], docs: any) {
+  // collect toc items
+  const tocList = toc
+    .filter(item => item.type !== 'META')
+    .map(item => {
+      return pick(item, [ 'type', 'title', 'uuid', 'parent_uuid', 'url' ]);
+    });
 
-    const treeNodes = arrayToTree(tocList, {
-      id: 'uuid',
-      parentId: 'parent_uuid',
-      nestedIds: false,
-      dataField: null,
-    }) as TreeNode[];
+  const treeNodes = arrayToTree(tocList, {
+    id: 'uuid',
+    parentId: 'parent_uuid',
+    nestedIds: false,
+    dataField: null,
+  }) as TreeNode[];
 
-    // collect draft items
-    const slugSet = new Set(tocList.map(item => item.url));
-    const draftNode = {
-      type: 'TITLE' as const,
-      uuid: 'draft',
-      title: '草稿箱',
-      children: docs.filter(doc => !slugSet.has(doc.slug)).map(doc => {
-        return {
-          type: 'DOC',
-          title: doc.title,
-          uuid: doc.id,
-          parent_uuid: 'draft',
-          url: doc.slug,
-        };
-      }),
-    };
+  // collect draft items
+  const slugSet = new Set(tocList.map(item => item.url));
+  const draftNode = {
+    type: 'TITLE' as const,
+    uuid: 'draft',
+    title: '草稿箱',
+    children: docs.filter(doc => !slugSet.has(doc.slug)).map(doc => {
+      return {
+        type: 'DOC',
+        title: doc.title,
+        uuid: doc.id,
+        parent_uuid: 'draft',
+        url: doc.slug,
+      };
+    }),
+  };
 
-    const tree = new Toc(namespace, [ ...treeNodes as any, draftNode as any ]);
-    return tree;
-  }
+  return new TocTree(namespace, [...treeNodes as any, draftNode as any]);
 }
 
 function pick<T>(obj: T, keys: string[]) {

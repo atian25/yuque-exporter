@@ -57,6 +57,7 @@ router.addHandler('repo_detail', async ctx => {
 
   log.info(`Syncing repo toc: ${name}(${namespace})`);
 
+  await saveToStorage(`${namespace}/repo`, ctx.json.data);
   await saveToStorage(`${namespace}/toc`, toc_yml, { contentType: 'text/yaml' });
 
   await crawler.addRequests([

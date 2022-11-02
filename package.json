@@ -6,11 +6,14 @@
   "type": "module",
   "dependencies": {
     "crawlee": "^3.0.0",
+    "fast-glob": "^3.2.12",
     "p-queue": "^7.3.0",
     "performant-array-to-tree": "^1.11.0",
     "remark": "^14.0.2",
     "sanitize-filename": "^1.6.3",
+    "undici": "^5.12.0",
     "unist-util-inspect": "^7.0.1",
+    "unist-util-select": "^4.0.1",
     "unist-util-visit": "^4.1.1",
     "yaml": "^2.1.3"
   },

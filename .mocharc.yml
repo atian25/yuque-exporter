@@ -1,3 +1,4 @@
 spec: 'test/**/*.test.ts'
 extensions: [ 'ts' ]
 loader: ts-node/esm/transpile-only
+timeout: 60000
