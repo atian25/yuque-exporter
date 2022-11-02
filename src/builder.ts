@@ -50,6 +50,8 @@ export class Builder {
       for (const node of docMapping.values()) {
         this.taskQueue.add(() => this.buildDoc(node, docMapping));
       }
+
+      await this.taskQueue.onIdle();
     }
   }
 
@@ -58,12 +60,14 @@ export class Builder {
     // console.log(doc, docMapping);
     const fullPath = path.join(this.dist, doc.namespace, `${doc.filePath}.md`);
     const docDetail = await readJSON(path.join(this.src, doc.namespace, 'docs', `${doc.url}.json`));
+    doc.body = docDetail.body;
 
     const content = await processDoc({
       src: this.src,
       dist: this.dist,
-      assets: path.join(this.src, doc.namespace, 'assets'),
-      doc: docDetail,
+      assets: path.join(this.dist, doc.namespace, 'assets'),
+      filePath: fullPath,
+      doc,
       docMapping,
     });
 
