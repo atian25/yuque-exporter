@@ -18,34 +18,31 @@ export async function build() {
   const tree = await buildTree(repos);
 
   // travel tree to build docs
-  tree.travel(node => {
+  const tasks: (() => Promise<void>)[] = [];
+  for (const { node } of tree) {
     const fullPath = path.join(outputDir, node.filePath);
     console.log(fullPath);
     switch (node.type) {
       case 'TITLE':
-        taskQueue.add(() => mkdir(fullPath));
+        tasks.push(() => mkdir(fullPath));
         break;
 
       case 'UNCREATED_DOC':
-        taskQueue.add(() => writeFile(`${fullPath}.md`, ''));
+        tasks.push(() => writeFile(`${fullPath}.md`, ''));
         break;
 
       case 'LINK':
-        taskQueue.add(() => writeFile(`${fullPath}.md`, node.url));
+        tasks.push(() => writeFile(`${fullPath}.md`, node.url));
         break;
 
       case 'DRAFT_DOC':
       case 'DOC':
-        taskQueue.add(async () => {
-          try {
-            if (node.namespace !== 'atian25/test') return;
-            const doc = await buildDoc(node, tree.docs);
-            console.log(doc.content);
-            const fullPath = path.join(outputDir, doc.namespace, `${doc.filePath}.md`);
-            await writeFile(fullPath, JSON.stringify(doc, null, 2) + '\n' + doc.content);
-          } catch (e) {
-            console.log(e)
-          }
+        tasks.push(async () => {
+          if (node.namespace !== 'atian25/test') return
+
+          const doc = await buildDoc(node, tree.docs);
+          const fullPath = path.join(outputDir, `${doc.filePath}.md`);
+          await writeFile(fullPath, JSON.stringify(doc, null, 2) + '\n' + doc.content);
         });
         break;
 
@@ -53,9 +50,10 @@ export async function build() {
       default:
         break;
     }
-  });
+  }
 
-  // build docs
+  // TODO: only warn when error
+  await taskQueue.addAll(tasks);
 }
 
 // async function buildDoc(doc: TreeNode, docMapping) {

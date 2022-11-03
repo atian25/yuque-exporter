@@ -4,8 +4,7 @@ import yaml from 'yaml';
 
 import { writeFile } from './utils.js';
 import { config } from './config.js';
-const { host, metaDir } = config;
-const apiHost = `${host}api/v2`;
+const { apiHost, metaDir } = config;
 
 export const router = createCheerioRouter();
 

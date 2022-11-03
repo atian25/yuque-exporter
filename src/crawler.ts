@@ -2,7 +2,7 @@ import { CheerioCrawler, Configuration, purgeDefaultStorages, RequestOptions } f
 
 import { router } from './routes.js';
 import { config } from './config.js';
-const { host, token } = config;
+const { apiHost, token } = config;
 
 export const crawler = new CheerioCrawler({
   requestHandler: router,
@@ -14,7 +14,7 @@ export const crawler = new CheerioCrawler({
     function auth(ctx, opts = {}) {
       opts.headers = opts.headers || {};
       // only add when host is yuque
-      if (ctx.request.url.startsWith(host)) {
+      if (ctx.request.url.startsWith(apiHost)) {
         opts.headers['X-Auth-Token'] = token;
       }
     },
@@ -22,12 +22,12 @@ export const crawler = new CheerioCrawler({
 }, new Configuration({ purgeOnStart: false }));
 
 export async function startCrawl(urlPaths: string[]) {
-  const requests = urlPaths.map(urlPath => buildRequest(config.host, urlPath)).filter(x => !!x);
+  const requests = urlPaths.map(urlPath => buildRequest(urlPath)).filter(x => !!x);
   console.log(requests.map(x => x.userData.description));
   await crawler.run(requests);
 }
 
-function buildRequest(host: string, urlPath: string): RequestOptions {
+function buildRequest(urlPath: string): RequestOptions {
   const [ user, repo, extra ] = urlPath.split('/');
   if (extra) {
     console.warn(`invalid url paths: ${urlPath}`);
@@ -35,7 +35,7 @@ function buildRequest(host: string, urlPath: string): RequestOptions {
   } else if (repo) {
     // fetch a repo with namespace
     return {
-      url: `${host}/repos/${user}/${repo}`,
+      url: `${apiHost}/repos/${user}/${repo}`,
       label: 'repo_detail',
       userData: {
         user,
@@ -45,7 +45,7 @@ function buildRequest(host: string, urlPath: string): RequestOptions {
   } else {
     // fetch all repos with user name
     return {
-      url: `${host}/users/${user}/repos`,
+      url: `${apiHost}/users/${user}/repos`,
       label: 'user_repos',
       userData: {
         user,

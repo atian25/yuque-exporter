@@ -8,16 +8,28 @@ import { readJSON } from '../utils.js';
 import { config } from '../config.js';
 const { metaDir } = config;
 
+interface TravelResult {
+  node: TreeNode;
+  index: number;
+  parent ?: TreeNode;
+}
+
 export async function buildTree(repos: Repository[]) {
   const tree = {
     children: [] as TreeNode[],
     docs: {} as Record<string, TreeNode>,
 
-    travel(fn: (node: TreeNode, ctx: { index: number; parent?: TreeNode }) => void) {
+    travel(fn: (args: TravelResult) => void) {
       visit<TreeNode>(this as any, (node, index, parent?: TreeNode) => {
         if (!parent) return;
-        fn(node, { index, parent });
+        fn({ node, index, parent });
       });
+    },
+
+    * [Symbol.iterator]() {
+      const result: TravelResult[] = [];
+      this.travel(args => result.push(args));
+      yield* result;
     },
 
     inspect() {
@@ -34,7 +46,8 @@ export async function buildTree(repos: Repository[]) {
   // calculate file paths, when duplicate then add index to suffix
   const duplicateMap = new Map<string, number>();
 
-  tree.travel((node, { parent }) => {
+  tree.travel(args => {
+    const { node, parent } = args;
     const { title, type, parent_uuid } = node;
     const key = `${parent_uuid}/${type}/${title}`;
     const count = duplicateMap.get(key) || 0;

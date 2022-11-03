@@ -12,9 +12,9 @@ export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
   assert(config.token, 'Missing token, should provide process.env.YUQUE_TOKEN');
 
   // crawl yuque data
-  await rm(config.metaDir);
-  console.log(`Crawling output to ${config.outputDir}`);
-  await startCrawl(urlPaths);
+  // await rm(config.metaDir);
+  // console.log(`Crawling output to ${config.outputDir}`);
+  // await startCrawl(urlPaths);
 
   // process yuque data
   await build();
