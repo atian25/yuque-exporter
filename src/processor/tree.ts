@@ -1,0 +1,117 @@
+import path from 'path';
+import { visit } from 'unist-util-visit';
+import { inspectNoColor } from 'unist-util-inspect';
+import { arrayToTree } from 'performant-array-to-tree';
+
+import type { DocInfo, Repository, TocInfo, TreeNode } from '../types';
+import { readJSON } from '../utils.js';
+import { config } from '../config.js';
+const { metaDir } = config;
+
+export async function buildTree(repos: Repository[]) {
+  const tree = {
+    children: [] as TreeNode[],
+    docs: {} as Record<string, TreeNode>,
+
+    travel(fn: (node: TreeNode, ctx: { index: number; parent?: TreeNode }) => void) {
+      visit<TreeNode>(this as any, (node, index, parent?: TreeNode) => {
+        if (!parent) return;
+        fn(node, { index, parent });
+      });
+    },
+
+    inspect() {
+      return console.log(inspectNoColor(this.children));
+    },
+  };
+
+  // build repo tree
+  for (const repo of repos) {
+    const node = await buildRepoTree(repo);
+    tree.children.push(node);
+  }
+
+  // calculate file paths, when duplicate then add index to suffix
+  const duplicateMap = new Map<string, number>();
+
+  tree.travel((node, { parent }) => {
+    const { title, type, parent_uuid } = node;
+    const key = `${parent_uuid}/${type}/${title}`;
+    const count = duplicateMap.get(key) || 0;
+    if (count) {
+      node.filePath = `${node.title} ${count}`;
+      duplicateMap.set(key, count + 1);
+    } else {
+      node.filePath = node.title;
+      duplicateMap.set(key, 1);
+    }
+
+    if (parent.filePath) {
+      // TODO: sanitize-filename
+      node.filePath = `${parent.filePath}/${node.filePath}`;
+    }
+
+    if (type === 'DOC' || type === 'UNCREATED_DOC' || type === 'DRAFT_DOC') {
+      const key = `${node.namespace}/${node.url}`;
+      tree.docs[key] = node;
+    }
+  });
+
+  return tree;
+}
+
+export async function buildRepoTree(repo: Repository) {
+  const repoNode: TreeNode = {
+    type: 'REPO' as const,
+    title: repo.name,
+    namespace: repo.namespace,
+    url: repo.namespace,
+    uuid: repo.namespace,
+    parent_uuid: '',
+    children: [],
+  };
+
+  const docs: DocInfo[] = await readJSON(path.join(metaDir, repo.namespace, 'docs.json'));
+  const toc: TocInfo[] = await readJSON(path.join(metaDir, repo.namespace, 'toc.json'));
+
+  // collect toc items
+  const tocList = toc
+    .filter(item => item.type !== 'META')
+    .map(item => {
+      return {
+        type: item.type,
+        title: item.title,
+        uuid: item.uuid,
+        parent_uuid: item.parent_uuid || repoNode.uuid,
+        url: item.url,
+        namespace: repo.namespace,
+      };
+    });
+
+  const childNodes = arrayToTree(tocList, {
+    id: 'uuid',
+    parentId: 'parent_uuid',
+    nestedIds: false,
+    rootParentIds: { [repoNode.uuid]: true },
+    dataField: null,
+  }) as TreeNode[];
+
+  // collect draft items
+  const slugSet = new Set(tocList.map(item => item.url));
+  const draftNodes: TreeNode[] = docs
+    .filter(doc => !slugSet.has(doc.slug))
+    .map(doc => {
+      const node: TreeNode = {
+        type: 'DRAFT_DOC',
+        title: doc.title,
+        uuid: doc.id,
+        parent_uuid: repoNode.uuid,
+        url: doc.slug,
+        namespace: repo.namespace,
+      };
+      return node;
+    });
+
+  repoNode.children = [ ...childNodes, ...draftNodes ];
+  return repoNode;
+}

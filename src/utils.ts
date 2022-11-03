@@ -17,8 +17,12 @@ export async function exists(p: string) {
   }
 }
 
-export async function mkdir(...paths) {
-  await fs.mkdir(path.join(...paths), { recursive: true });
+export async function mkdir(p: string) {
+  await fs.mkdir(p, { recursive: true });
+}
+
+export async function rm(p: string) {
+  await fs.rm(p, { recursive: true, force: true });
 }
 
 export async function writeFile(filePath: string, content) {

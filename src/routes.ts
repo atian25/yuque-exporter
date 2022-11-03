@@ -1,7 +1,11 @@
 import path from 'path';
 import { createCheerioRouter, KeyValueStore, RecordOptions } from 'crawlee';
+import yaml from 'yaml';
 
-import { host, root } from './config.js';
+import { writeFile } from './utils.js';
+import { config } from './config.js';
+const { host, metaDir } = config;
+const apiHost = `${host}api/v2`;
 
 export const router = createCheerioRouter();
 
@@ -10,14 +14,14 @@ router.addDefaultHandler(async ctx => {
 
   const userInfo = ctx.json.data;
 
-  log.info(`Syncing user: ${userInfo.name}(@${userInfo.login})`);
+  log.info(`Crawling user: ${userInfo.name}(@${userInfo.login})`);
 
-  await saveToStorage(`${userInfo.login}/user`, userInfo);
+  await saveToStorage(`${userInfo.login}/user.json`, userInfo);
 
   await crawler.addRequests([
     {
-      url: `${host}/users/${userInfo.login}/repos`,
-      label: 'repos',
+      url: `${apiHost}/users/${userInfo.login}/repos`,
+      label: 'user_repos',
       userData: {
         user: userInfo.login,
       },
@@ -25,14 +29,14 @@ router.addDefaultHandler(async ctx => {
   ]);
 });
 
-router.addHandler('repos', async ctx => {
+router.addHandler('user_repos', async ctx => {
   const { log, crawler, request } = ctx;
 
   const repos = ctx.json.data;
   const { user } = request.userData;
 
-  log.info(`Syncing ${repos.length} repos`);
-  await saveToStorage(`${user}/repos`, repos);
+  log.info(`Crawling ${repos.length} repos`);
+  await saveToStorage(`${user}/repos.json`, repos);
 
   for (const repo of repos) {
     const { type, name, namespace } = repo;
@@ -44,7 +48,7 @@ router.addHandler('repos', async ctx => {
 
     await crawler.addRequests([
       {
-        url: `${host}/repos/${namespace}`,
+        url: `${apiHost}/repos/${namespace}`,
         label: 'repo_detail',
       },
     ]);
@@ -55,14 +59,14 @@ router.addHandler('repo_detail', async ctx => {
   const { log, crawler } = ctx;
   const { name, namespace, toc_yml } = ctx.json.data;
 
-  log.info(`Syncing repo toc: ${name}(${namespace})`);
+  log.info(`Crawling repo toc: ${name}(${namespace})`);
 
-  await saveToStorage(`${namespace}/repo`, ctx.json.data);
-  await saveToStorage(`${namespace}/toc`, toc_yml, { contentType: 'text/yaml' });
+  await saveToStorage(`${namespace}/repo.json`, ctx.json.data);
+  await saveToStorage(`${namespace}/toc.json`, yaml.parse(toc_yml));
 
   await crawler.addRequests([
     {
-      url: `${host}/repos/${namespace}/docs`,
+      url: `${apiHost}/repos/${namespace}/docs`,
       label: 'docs',
       userData: { name, namespace },
     },
@@ -74,14 +78,14 @@ router.addHandler('docs', async ctx => {
   const docs = ctx.json.data;
   const { name, namespace } = request.userData;
 
-  log.info(`Syncing docs: ${name}(${namespace})`);
+  log.info(`Crawling docs: ${name}(${namespace})`);
 
-  await saveToStorage(`${namespace}/docs`, docs);
+  await saveToStorage(`${namespace}/docs.json`, docs);
 
   for (const doc of docs) {
     await crawler.addRequests([
       {
-        url: `${host}/repos/${namespace}/docs/${doc.slug}`,
+        url: `${apiHost}/repos/${namespace}/docs/${doc.slug}`,
         label: 'doc_detail',
       },
     ]);
@@ -94,11 +98,10 @@ router.addHandler('doc_detail', async ctx => {
   const { title, slug } = doc;
   const { namespace } = doc.book;
 
-  log.info(`Syncing doc: ${title}(${namespace}/${slug})`);
-  await saveToStorage(`${namespace}/docs/${slug}`, doc);
+  log.info(`Crawling doc: ${title}(${namespace}/${slug})`);
+  await saveToStorage(`${namespace}/docs/${slug}.json`, doc);
 });
 
-async function saveToStorage(id: string, value: Record<string, any>, options: RecordOptions = {}) {
-  const store = await KeyValueStore.open(`yuque/${path.dirname(id)}`);
-  await store.setValue(path.basename(id), value, { contentType: options.contentType });
+async function saveToStorage(filePath: string, content) {
+  await writeFile(path.join(metaDir, filePath), content);
 }

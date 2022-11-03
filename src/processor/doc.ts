@@ -1,41 +1,53 @@
 import path from 'path';
+import fs from 'fs';
+
 import { remark } from 'remark';
 import { selectAll } from 'unist-util-select';
 import { request } from 'undici';
-import fs from 'fs';
-import path from 'path';
 import { pipeline } from 'stream/promises';
 
-import { DocDetail } from '../proto.js';
+import { DocDetail, TreeNode } from '../types.js';
+import { config } from '../config.js';
+import { readJSON } from '../utils.js';
+const { host, metaDir } = config;
+const hostname = new URL(host).hostname;
 
 interface Options {
-  src: string;
-  dist: string;
-  assets?: string;
-  filePath: string;
-  doc: DocDetail;
-  docMapping?: Map<string, DocDetail>;
+  doc: TreeNode;
+  mapping: Record<string, DocDetail>;
+  // src: string;
+  // dist: string;
+  // assets?: string;
+  // filePath: string;
+  // doc: DocDetail;
+  // docMapping?: Map<string, DocDetail>;
 }
 
-export async function processDoc(opts: Options) {
-  opts.assets = opts.assets || path.join(opts.dist, 'assets');
-  const { src, dist, assets, doc, docMapping } = opts;
-
-  const content = await remark()
+export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>) {
+  const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
+  doc.content = await remark()
     .use([
-      [ relativeLink, opts ],
-      [ downloadImage, opts ],
+      [ relativeLink, { doc, mapping }],
+      // [ downloadImage, { doc, mapping }],
     ])
-    .process(doc.body);
+    .process(docDetail.body)
+    .then(f => f.toString());
 
-  return content.value;
+  return doc;
 }
 
-function relativeLink(opts: Options) {
+interface LinkNode { url: string; }
+
+function relativeLink({ doc, mapping }: Options) {
   return tree => {
-    const links = selectAll('link', tree);
+    const links = selectAll('link', tree) as any as LinkNode[];
     for (const node of links) {
-      (node as any).url += 'xxxxx';
+      if (!node.url || !node.url.startsWith('http')) continue;
+      const urlObj = new URL(node.url);
+      const targetNode = mapping[urlObj.pathname.substring(1)];
+      if (urlObj.hostname === hostname && targetNode) {
+        node.url = path.relative(path.dirname(doc.filePath), targetNode.filePath) + '.md';
+      }
     }
   };
 }
@@ -46,7 +58,7 @@ function downloadImage(opts: Options) {
     for (const node of imageNodes) {
       const url = (node as any).url;
       const localPath = await download(url, opts.assets);
-      (node as any).url = path.relative(path.dirname(opts.filePath), localPath);
+      // (node as any).url = path.relative(path.dirname(opts.filePath), localPath);
     }
   };
 }
