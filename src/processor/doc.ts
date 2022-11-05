@@ -1,12 +1,13 @@
 import path from 'path';
 import fs from 'fs';
+import { pipeline } from 'stream/promises';
 
 import { remark } from 'remark';
 import { selectAll } from 'unist-util-select';
+import yaml from 'yaml';
 import { request } from 'undici';
-import { pipeline } from 'stream/promises';
 
-import { DocDetail, TreeNode } from '../types.js';
+import { TreeNode } from '../types.js';
 import { config } from '../config.js';
 import { readJSON } from '../utils.js';
 const { host, metaDir } = config;
@@ -14,29 +15,34 @@ const hostname = new URL(host).hostname;
 
 interface Options {
   doc: TreeNode;
-  mapping: Record<string, DocDetail>;
-  // src: string;
-  // dist: string;
-  // assets?: string;
-  // filePath: string;
-  // doc: DocDetail;
-  // docMapping?: Map<string, DocDetail>;
+  mapping: Record<string, TreeNode>;
 }
+
+interface LinkNode { url: string; }
 
 export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>) {
   const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
-  doc.content = await remark()
+  const content = await remark()
     .use([
       [ relativeLink, { doc, mapping }],
       // [ downloadImage, { doc, mapping }],
     ])
-    .process(docDetail.body)
-    .then(f => f.toString());
+    .process(docDetail.body);
 
+  doc.content = frontMatter(doc) + content.toString();
   return doc;
 }
 
-interface LinkNode { url: string; }
+function frontMatter(doc) {
+  const frontMatter = yaml.stringify({
+    title: doc.title,
+    slug: doc.slug,
+    public: doc.public,
+    status: doc.status,
+    description: doc.description,
+  });
+  return `---\n${frontMatter}\n---\n`;
+}
 
 function relativeLink({ doc, mapping }: Options) {
   return tree => {
@@ -57,7 +63,7 @@ function downloadImage(opts: Options) {
     const imageNodes = selectAll('image', tree);
     for (const node of imageNodes) {
       const url = (node as any).url;
-      const localPath = await download(url, opts.assets);
+      // const localPath = await download(url, opts.assets);
       // (node as any).url = path.relative(path.dirname(opts.filePath), localPath);
     }
   };

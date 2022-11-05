@@ -42,7 +42,7 @@ export async function build() {
 
           const doc = await buildDoc(node, tree.docs);
           const fullPath = path.join(outputDir, `${doc.filePath}.md`);
-          await writeFile(fullPath, JSON.stringify(doc, null, 2) + '\n' + doc.content);
+          await writeFile(fullPath, doc.content);
         });
         break;
 

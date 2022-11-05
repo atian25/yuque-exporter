@@ -75,7 +75,7 @@ export async function buildTree(repos: Repository[]) {
 
 export async function buildRepoTree(repo: Repository) {
   const repoNode: TreeNode = {
-    type: 'REPO' as const,
+    type: 'REPO',
     title: repo.name,
     namespace: repo.namespace,
     url: repo.namespace,
