@@ -8,9 +8,11 @@ import yaml from 'yaml';
 import { request } from 'undici';
 
 import { TreeNode } from '../types.js';
-import { config } from '../config.js';
 import { readJSON } from '../utils.js';
-const { host, metaDir } = config;
+import { crawler } from '../crawler.js';
+import { config } from '../config.js';
+
+const { host, metaDir, outputDir } = config;
 const hostname = new URL(host).hostname;
 
 interface Options {
@@ -25,7 +27,7 @@ export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>)
   const content = await remark()
     .use([
       [ relativeLink, { doc, mapping }],
-      // [ downloadImage, { doc, mapping }],
+      [ downloadImage, { doc, mapping }],
     ])
     .process(docDetail.body);
 
@@ -60,16 +62,20 @@ function relativeLink({ doc, mapping }: Options) {
 
 function downloadImage(opts: Options) {
   return async tree => {
-    const imageNodes = selectAll('image', tree);
+    const docFilePath = opts.doc.filePath;
+    const assetsDir = path.join(docFilePath.split('/')[0], 'assets');
+
+    const imageNodes = selectAll('image', tree) as any as LinkNode[];
     for (const node of imageNodes) {
-      const url = (node as any).url;
-      // const localPath = await download(url, opts.assets);
-      // (node as any).url = path.relative(path.dirname(opts.filePath), localPath);
+      if (!node.url || !node.url.startsWith('http')) continue;
+      const filePath = path.join(assetsDir, getImageName(node.url));
+      await download(node.url, filePath);
+      node.url = path.relative(path.dirname(docFilePath), filePath);
     }
   };
 }
 
-async function download(url, dist) {
+async function download(url, filePath) {
   const { body, statusCode } = await request(url, {
     headers: {
       'user-agent': 'yuque-exporter',
@@ -80,10 +86,8 @@ async function download(url, dist) {
     return url;
   }
 
-  const filePath = path.join(dist, new URL(url).pathname.split('/').pop());
   await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
   await pipeline(body, fs.createWriteStream(filePath));
-  return filePath;
 }
 
 function getImageName(url) {

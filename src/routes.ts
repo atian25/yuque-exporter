@@ -101,6 +101,15 @@ router.addHandler('doc_detail', async ctx => {
   await saveToStorage(`${namespace}/docs/${slug}.json`, doc);
 });
 
+router.addHandler('assets', async ctx => {
+  const { log, crawler, request } = ctx;
+  const { url, userData } = request;
+  const { filePath } = userData;
+
+  log.info(`Crawling asset: ${request.url} to ${filePath}`);
+  await saveToStorage(filePath, ctx.body);
+});
+
 async function saveToStorage(filePath: string, content) {
   await writeFile(path.join(metaDir, filePath), content);
 }

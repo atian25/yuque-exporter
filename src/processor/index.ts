@@ -12,7 +12,11 @@ const { outputDir, metaDir } = config;
 const taskQueue = new PQueue({ concurrency: 10 });
 
 export async function build() {
-  const repos = await getRepos();
+  const repos = await listRepos();
+  if (repos.length === 0) {
+    console.log(`No repos found at ${metaDir}`);
+    return;
+  }
 
   // convert meta to tree
   const tree = await buildTree(repos);
@@ -56,30 +60,7 @@ export async function build() {
   await taskQueue.addAll(tasks);
 }
 
-// async function buildDoc(doc: TreeNode, docMapping) {
-//   console.log(doc.filePath)
-//   // console.log(doc, docMapping);
-//   const fullPath = path.join(outputDir, doc.namespace, `${doc.filePath}.md`);
-//   const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
-//   doc.body = docDetail.body;
-
-  // const content = await processDoc({
-  //   src: this.src,
-  //   dist: this.dist,
-  //   assets: path.join(this.dist, doc.namespace, 'assets'),
-  //   filePath: fullPath,
-  //   doc,
-  //   docMapping,
-  // });
-
-  // await writeFile(fullPath, JSON.stringify(doc, null, 2) + '\n' + content);
-  // md ast
-  // replace link with local link
-  // replace image with local image
-  // write to file
-// }
-
-async function getRepos(): Promise<Repository[]> {
+async function listRepos(): Promise<Repository[]> {
   const repos = [];
   const reposPath = await fg('**/repo.json', { cwd: metaDir, deep: 3 });
   for (const repoPath of reposPath) {

@@ -10,6 +10,7 @@ export const crawler = new CheerioCrawler({
   // maxRequestsPerCrawl: 30,
   // maxRequestsPerMinute: 10,
   ignoreSslErrors: true,
+  additionalMimeTypes: [ 'application/json', 'text/html', 'application/xhtml+xml', 'image/svg+xml', 'image/jpeg', 'image/png' ],
   preNavigationHooks: [
     function auth(ctx, opts = {}) {
       opts.headers = opts.headers || {};
