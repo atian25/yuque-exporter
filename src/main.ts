@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { crawler, startCrawl } from './crawler.js';
 import { build } from './processor/index.js';
 import { rm } from './utils.js';
+import { crawl } from './bot.js';
 import { config } from './config.js';
 
 export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
@@ -11,13 +12,12 @@ export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
 
   assert(config.token, 'Missing token, should provide process.env.YUQUE_TOKEN');
 
-  // await crawler.run([
-  //   { url: 'https://crawlee.dev/assets/images/scraping-practice-ff5b1b61c1d1607988633d7ae672313f.jpg', label: 'assets', userData: { filePath: './output/1.jpg'} },
-  // ]);
   // crawl yuque data
-  // await rm(config.metaDir);
+  await rm(config.metaDir);
   // console.log(`Crawling output to ${config.outputDir}`);
   // await startCrawl(urlPaths);
+
+  await crawl(urlPaths);
 
   // process yuque data
   await build();
