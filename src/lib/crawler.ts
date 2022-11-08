@@ -4,15 +4,18 @@ import yaml from 'yaml';
 
 import { SDK } from './sdk.js';
 import { logger, writeFile, rm } from './utils.js';
-import { config } from './config.js';
-const { host, token, metaDir } = config;
+import { config } from '../config.js';
+const { host, token, userAgent, metaDir } = config;
 
-const sdk = new SDK({ token, host });
+const sdk = new SDK({ token, host, userAgent });
 const taskQueue = new PQueue({ concurrency: 10 });
 
-export async function crawl(inputs: string[], clean = true) {
+export async function crawl(inputs?: string[], clean = true) {
   logger.info('Start crawling...');
   if (clean) await rm(metaDir);
+
+  // if inputs is empty, crawl all repos of the user which associated with the token
+  if (!inputs) inputs = [ '' ];
 
   // find target repos
   const repoList = new Set<string>();
@@ -26,11 +29,12 @@ export async function crawl(inputs: string[], clean = true) {
       repoList.add(`${user}/${repo}`);
     } else {
       const userInfo = await sdk.getUser(user);
-      await saveToStorage(`${user}/user.json`, userInfo);
+      const login = userInfo.login;
+      await saveToStorage(`${login}/user.json`, userInfo);
 
       // fetch all repos with user name
-      const repos = await sdk.getRepos(user);
-      await saveToStorage(`${user}/repos.json`, repos);
+      const repos = await sdk.getRepos(login);
+      await saveToStorage(`${login}/repos.json`, repos);
       for (const repo of repos) {
         if (repo.type === 'Book') {
           repoList.add(repo.namespace);

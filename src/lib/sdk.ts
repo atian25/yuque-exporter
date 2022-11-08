@@ -1,17 +1,5 @@
 import { request, Dispatcher } from 'undici';
 
-export interface SDKOptions {
-  token: string;
-  host?: string;
-  useAgent?: string;
-}
-
-export interface ResponseData<T> {
-  data?: T;
-  message?: string;
-  code?: number;
-}
-
 export interface User {
   id: number;
   type: string;
@@ -89,6 +77,18 @@ export interface DocDetail extends Doc {
   body_draft_lake: string;
 }
 
+export interface SDKOptions {
+  token: string;
+  host?: string;
+  userAgent?: string;
+}
+
+export interface ResponseData<T> {
+  data?: T;
+  message?: string;
+  code?: number;
+}
+
 export class SDK {
   private token: string;
   private host: string;
@@ -97,11 +97,12 @@ export class SDK {
   constructor(opts: SDKOptions) {
     this.token = opts.token;
     this.host = opts.host || 'https://www.yuque.com';
-    this.userAgent = opts.useAgent || 'yuque-sdk';
+    this.userAgent = opts.userAgent || 'yuque-sdk';
   }
 
-  async getUser(user: string) {
-    return await this.requestAPI<User>(`users/${user}`);
+  async getUser(user = '') {
+    const api = user ? `users/${user}` : 'user';
+    return await this.requestAPI<User>(api);
   }
 
   async getRepos(user: string) {

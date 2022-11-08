@@ -5,7 +5,7 @@ import { arrayToTree } from 'performant-array-to-tree';
 
 import type { DocInfo, Repository, TocInfo, TreeNode } from './types';
 import { readJSON } from './utils.js';
-import { config } from './config.js';
+import { config } from '../config.js';
 const { metaDir } = config;
 
 interface TravelResult {
@@ -50,6 +50,8 @@ export async function buildTree(repos: Repository[]) {
   tree.travel(args => {
     const { node, parent } = args;
     const { title, type, parent_uuid } = node;
+
+    // TODO: use slug as key suffix
     const key = `${parent_uuid}/${type}/${title}`;
     const count = duplicateMap.get(key) || 0;
     if (count) {
