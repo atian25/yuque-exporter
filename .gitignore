@@ -12,3 +12,5 @@ npm-debug.log
 apify_storage
 crawlee_storage
 storage
+test/output
+output/

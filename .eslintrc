@@ -4,6 +4,8 @@
     "sourceType": "module"
   },
   "rules": {
-    "@typescript-eslint/no-unused-vars": "off"
+    "no-else-return": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+    "eggache/no-only-tests": "off"
   }
 }

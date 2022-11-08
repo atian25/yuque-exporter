@@ -1,11 +1,10 @@
-import fs from 'fs/promises';
 import path from 'path';
-
-import { createCheerioRouter } from 'crawlee';
+import { createCheerioRouter, KeyValueStore, RecordOptions } from 'crawlee';
 import yaml from 'yaml';
 
-import { host, root } from './config.js';
-import { parser } from './parser.js';
+import { writeFile } from './utils.js';
+import { config } from './config.js';
+const { apiHost, metaDir } = config;
 
 export const router = createCheerioRouter();
 
@@ -14,14 +13,14 @@ router.addDefaultHandler(async ctx => {
 
   const userInfo = ctx.json.data;
 
-  log.info(`Syncing user: ${userInfo.name}(@${userInfo.login})`);
+  log.info(`Crawling user: ${userInfo.name}(@${userInfo.login})`);
 
-  await saveToStorage(`${userInfo.login}/meta.json`, userInfo);
+  await saveToStorage(`${userInfo.login}/user.json`, userInfo);
 
   await crawler.addRequests([
     {
-      url: `${host}/users/${userInfo.login}/repos`,
-      label: 'repos',
+      url: `${apiHost}/users/${userInfo.login}/repos`,
+      label: 'user_repos',
       userData: {
         user: userInfo.login,
       },
@@ -29,12 +28,14 @@ router.addDefaultHandler(async ctx => {
   ]);
 });
 
-router.addHandler('repos', async ctx => {
+router.addHandler('user_repos', async ctx => {
   const { log, crawler, request } = ctx;
 
   const repos = ctx.json.data;
+  const { user } = request.userData;
 
-  log.info(`Syncing ${repos.length} repos`);
+  log.info(`Crawling ${repos.length} repos`);
+  await saveToStorage(`${user}/repos.json`, repos);
 
   for (const repo of repos) {
     const { type, name, namespace } = repo;
@@ -44,13 +45,9 @@ router.addHandler('repos', async ctx => {
       continue;
     }
 
-    log.info(`Syncing repo: ${name}(${repo.namespace})`);
-
-    await saveToStorage(`${namespace}/meta.json`, repo);
-
     await crawler.addRequests([
       {
-        url: `${host}/repos/${namespace}`,
+        url: `${apiHost}/repos/${namespace}`,
         label: 'repo_detail',
       },
     ]);
@@ -59,97 +56,60 @@ router.addHandler('repos', async ctx => {
 
 router.addHandler('repo_detail', async ctx => {
   const { log, crawler } = ctx;
-  const { toc_yml, namespace } = ctx.json.data;
+  const { name, namespace, toc_yml } = ctx.json.data;
 
-  const toc = normalizeToc(yaml.parse(toc_yml));
+  log.info(`Crawling repo toc: ${name}(${namespace})`);
 
-  // log.info(request.loadedUrl);
+  await saveToStorage(`${namespace}/repo.json`, ctx.json.data);
+  await saveToStorage(`${namespace}/toc.json`, yaml.parse(toc_yml));
 
-  // TODO: parse toc and mkdir
-  await saveToStorage(`${namespace}/toc.json`, toc);
+  await crawler.addRequests([
+    {
+      url: `${apiHost}/repos/${namespace}/docs`,
+      label: 'docs',
+      userData: { name, namespace },
+    },
+  ]);
+});
 
-  for (const item of toc) {
-    const paths = [ root, namespace, ...item.paths || [] ].join('/');
-    switch (item.type) {
-      case 'TITLE': {
-        await fs.mkdir(`${paths}/${item.title}`, { recursive: true });
-        break;
-      }
+router.addHandler('docs', async ctx => {
+  const { log, crawler, request } = ctx;
+  const docs = ctx.json.data;
+  const { name, namespace } = request.userData;
 
-      case 'DOC': {
-        await crawler.addRequests([
-          {
-            url: `${host}/repos/${namespace}/docs/${item.url}`,
-            label: 'doc_detail',
-            userData: {
-              paths,
-            },
-          },
-        ]);
-        break;
-      }
+  log.info(`Crawling docs: ${name}(${namespace})`);
 
-      case 'UNCREATED_DOC': {
-        // TODO: create frontmatter
-        await saveToStorage(`${paths}/${item.url}.md`, `# ${item.title}`);
-        break;
-      }
+  await saveToStorage(`${namespace}/docs.json`, docs);
 
-      case 'META': break;
-      default:
-        log.warning('unknown type', item);
-        break;
-    }
+  for (const doc of docs) {
+    await crawler.addRequests([
+      {
+        url: `${apiHost}/repos/${namespace}/docs/${doc.slug}`,
+        label: 'doc_detail',
+      },
+    ]);
   }
-
-  // TODO: Sync drafts
-
 });
 
 router.addHandler('doc_detail', async ctx => {
   const { log, crawler, request } = ctx;
-  const { paths } = request.userData;
   const doc = ctx.json.data;
+  const { title, slug } = doc;
+  const { namespace } = doc.book;
 
-  await parser(doc.body, doc);
-
-  log.info(`Syncing doc: ${doc.title}(${doc.slug}) to ${paths.substring(root.length + 1)}/${doc.slug}.md`);
-
-  // TODO: parse markdown with remark
-  // TODO: append frontmatter
-  // TODO: replace image url
-  // TODO: relative link to other docs
-
-  await saveToStorage(`${paths}/${doc.slug}.md`, doc.body);
+  log.info(`Crawling doc: ${title}(${namespace}/${slug})`);
+  await saveToStorage(`${namespace}/docs/${slug}.json`, doc);
 });
 
-async function saveToStorage(filePath, content) {
-  filePath = path.resolve(root, filePath);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  content = typeof content === 'string' || Buffer.isBuffer(content) ? content : JSON.stringify(content, null, 2);
-  await fs.writeFile(filePath, content, 'utf-8');
-}
+router.addHandler('assets', async ctx => {
+  const { log, crawler, request } = ctx;
+  const { url, userData } = request;
+  const { filePath } = userData;
 
+  log.info(`Crawling asset: ${request.url} to ${filePath}`);
+  await saveToStorage(filePath, ctx.body);
+});
 
-function normalizeToc(toc) {
-  const mapping = {};
-  for (const item of toc) {
-    mapping[item.uuid] = item;
-  }
-
-  for (const item of toc) {
-    if (!item.parent_uuid) continue;
-    const paths: string[] = [];
-    let parent = mapping[item.parent_uuid];
-    while (parent) {
-      if (parent.paths) {
-        paths.push(...parent.paths);
-        break;
-      }
-      paths.push(parent.title);
-      parent = mapping[parent.parent_uuid];
-    }
-    item.paths = paths;
-  }
-  return toc;
+async function saveToStorage(filePath: string, content) {
+  await writeFile(path.join(metaDir, filePath), content);
 }
