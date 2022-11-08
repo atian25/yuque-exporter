@@ -1,11 +1,12 @@
 {
-  "name": "example",
+  "name": "yuque-explorter",
   "version": "1.0.0",
-  "description": "this is an example",
+  "description": "export yuque to local markdown",
   "author": "TZ <atian25@qq.com>",
   "type": "module",
+  "bin": "./bin/cli.js",
   "dependencies": {
-    "crawlee": "^3.0.0",
+    "consola": "^2.15.3",
     "fast-glob": "^3.2.12",
     "p-queue": "^7.3.0",
     "performant-array-to-tree": "^1.11.0",

@@ -1,10 +1,9 @@
 import assert from 'assert/strict';
 import { fileURLToPath } from 'url';
 
-import { crawler, startCrawl } from './crawler.js';
-import { build } from './processor/index.js';
-import { rm } from './utils.js';
-import { crawl } from './bot.js';
+import { build } from './builder.js';
+import { logger, rm } from './utils.js';
+import { crawl } from './crawler.js';
 import { config } from './config.js';
 
 export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
@@ -14,8 +13,6 @@ export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
 
   // crawl yuque data
   await rm(config.metaDir);
-  // console.log(`Crawling output to ${config.outputDir}`);
-  // await startCrawl(urlPaths);
 
   await crawl(urlPaths);
 

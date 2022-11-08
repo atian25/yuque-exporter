@@ -1,4 +1,3 @@
-import { type } from 'os';
 import { request, Dispatcher } from 'undici';
 
 export interface SDKOptions {

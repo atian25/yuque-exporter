@@ -1,57 +1,76 @@
-import { CheerioCrawler, Configuration, purgeDefaultStorages, RequestOptions } from 'crawlee';
+import path from 'path';
+import PQueue from 'p-queue';
+import yaml from 'yaml';
 
-import { router } from './routes.js';
+import { SDK } from './sdk.js';
+import { logger, writeFile, rm } from './utils.js';
 import { config } from './config.js';
-const { apiHost, token } = config;
+const { host, token, metaDir } = config;
 
-export const crawler = new CheerioCrawler({
-  requestHandler: router,
-  // maxConcurrency: 2,
-  // maxRequestsPerCrawl: 30,
-  // maxRequestsPerMinute: 10,
-  ignoreSslErrors: true,
-  additionalMimeTypes: [ 'application/json', 'text/html', 'application/xhtml+xml', 'image/svg+xml', 'image/jpeg', 'image/png' ],
-  preNavigationHooks: [
-    function auth(ctx, opts = {}) {
-      opts.headers = opts.headers || {};
-      // only add when host is yuque
-      if (ctx.request.url.startsWith(apiHost)) {
-        opts.headers['X-Auth-Token'] = token;
+const sdk = new SDK({ token, host });
+const taskQueue = new PQueue({ concurrency: 10 });
+
+export async function crawl(inputs: string[], clean = true) {
+  logger.info('Start crawling...');
+  if (clean) await rm(metaDir);
+
+  // find target repos
+  const repoList = new Set<string>();
+  for (const input of inputs) {
+    const [ user, repo, extra ] = input.split('/');
+    if (extra) {
+      logger.warn(`invalid url paths: ${input}`);
+      continue;
+    } else if (repo) {
+      // fetch a repo with namespace
+      repoList.add(`${user}/${repo}`);
+    } else {
+      const userInfo = await sdk.getUser(user);
+      await saveToStorage(`${user}/user.json`, userInfo);
+
+      // fetch all repos with user name
+      const repos = await sdk.getRepos(user);
+      await saveToStorage(`${user}/repos.json`, repos);
+      for (const repo of repos) {
+        if (repo.type === 'Book') {
+          repoList.add(repo.namespace);
+        }
       }
-    },
-  ],
-}, new Configuration({ purgeOnStart: false }));
+    }
+  }
+  logger.info(`Find repos to crawl: ${[ '', ...repoList ].join('\n  - ')}\n`);
 
-export async function startCrawl(urlPaths: string[]) {
-  const requests = urlPaths.map(urlPath => buildRequest(urlPath)).filter(x => !!x);
-  console.log(requests.map(x => x.userData.description));
-  await crawler.run(requests);
+  // crawl repos
+  for (const namespace of repoList) {
+    await crawlRepo(namespace);
+  }
 }
 
-function buildRequest(urlPath: string): RequestOptions {
-  const [ user, repo, extra ] = urlPath.split('/');
-  if (extra) {
-    console.warn(`invalid url paths: ${urlPath}`);
-    return undefined;
-  } else if (repo) {
-    // fetch a repo with namespace
-    return {
-      url: `${apiHost}/repos/${user}/${repo}`,
-      label: 'repo_detail',
-      userData: {
-        user,
-        description: `Crawling repo: ${user}/${repo}`,
-      },
+export async function crawlRepo(namespace: string) {
+  // crawl repo detail/docs/toc
+  logger.success(`Crawling repo detail: ${host}/${namespace}`);
+  const repo = await sdk.getRepoDetail(namespace);
+  const toc = yaml.parse(repo.toc_yml);
+  const docList = await sdk.getDocs(namespace);
+
+  await saveToStorage(`${namespace}/repo.json`, repo);
+  await saveToStorage(`${namespace}/toc.json`, toc);
+  await saveToStorage(`${namespace}/docs.json`, docList);
+
+  // crawl repo docs
+  const docs = await taskQueue.addAll(docList.map(doc => {
+    return async () => {
+      logger.success(` - [${doc.title}](${host}/${namespace}/${doc.slug})`);
+      const docDetail = await sdk.getDocDetail(namespace, doc.slug);
+      await saveToStorage(`${namespace}/docs/${doc.slug}.json`, docDetail);
     };
-  } else {
-    // fetch all repos with user name
-    return {
-      url: `${apiHost}/users/${user}/repos`,
-      label: 'user_repos',
-      userData: {
-        user,
-        description: `Crawling all repos of user: ${user}`,
-      },
-    };
-  }
+  }));
+
+  logger.log('');
+
+  return { repo, toc, docList, docs };
+}
+
+async function saveToStorage(filePath: string, content) {
+  await writeFile(path.join(metaDir, filePath), content);
 }
