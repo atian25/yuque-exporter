@@ -53,6 +53,9 @@ function relativeLink({ doc, mapping }: Options) {
       if (!node.url || !node.url.startsWith('http')) continue;
       const urlObj = new URL(node.url);
       const targetNode = mapping[urlObj.pathname.substring(1)];
+      if (!targetNode) {
+        console.warn(`[WARN] ${node.url}, ${urlObj.pathname.substring(1)} not found`);
+      }
       if (urlObj.hostname === hostname && targetNode) {
         node.url = path.relative(path.dirname(doc.filePath), targetNode.filePath) + '.md';
       }

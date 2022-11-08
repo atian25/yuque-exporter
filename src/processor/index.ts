@@ -42,7 +42,7 @@ export async function build() {
       case 'DRAFT_DOC':
       case 'DOC':
         tasks.push(async () => {
-          if (node.namespace !== 'atian25/test') return
+          // if (node.namespace !== 'atian25/test') return
 
           const doc = await buildDoc(node, tree.docs);
           const fullPath = path.join(outputDir, `${doc.filePath}.md`);
