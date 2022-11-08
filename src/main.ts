@@ -1,13 +1,18 @@
 import assert from 'assert/strict';
 import { fileURLToPath } from 'url';
 
-import { build } from './builder.js';
-import { logger, rm } from './utils.js';
-import { crawl } from './crawler.js';
+import { build } from './lib/builder.js';
+import { logger, rm } from './lib/utils.js';
+import { crawl } from './lib/crawler.js';
 import { config } from './config.js';
 
-export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
-  Object.assign(config, opts || {});
+interface StartOptions {
+  urlPaths?: string[];
+  options?: Partial<typeof config>;
+}
+
+export async function start({ urlPaths, options }: StartOptions = {}) {
+  Object.assign(config, options);
 
   assert(config.token, 'Missing token, should provide process.env.YUQUE_TOKEN');
 
@@ -24,10 +29,10 @@ export async function start(urlPaths: string[], opts?: Partial<typeof config>) {
 if (import.meta.url.startsWith('file:')) {
   const modulePath = fileURLToPath(import.meta.url);
   if (process.argv[1] === modulePath) {
-    const urls = [
+    const urlPaths = [
       'atian25/test',
       'atian25/blog',
     ];
-    await start(urls);
+    await start({ urlPaths });
   }
 }

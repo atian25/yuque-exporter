@@ -6,7 +6,7 @@ import type { Repository, TreeNode } from './types.js';
 import { logger, mkdir, readJSON, writeFile } from './utils.js';
 import { buildDoc } from './doc.js';
 import { buildTree } from './tree.js';
-import { config } from './config.js';
+import { config } from '../config.js';
 const { outputDir, metaDir } = config;
 
 const taskQueue = new PQueue({ concurrency: 10 });

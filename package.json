@@ -4,7 +4,7 @@
   "description": "export yuque to local markdown",
   "author": "TZ <atian25@qq.com>",
   "type": "module",
-  "bin": "./bin/cli.js",
+  "bin": "./dist/bin/cli.js",
   "dependencies": {
     "consola": "^2.15.3",
     "fast-glob": "^3.2.12",

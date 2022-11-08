@@ -1,17 +1,14 @@
 import path from 'path';
-import fs from 'fs';
-import { pipeline } from 'stream/promises';
 
 import { remark } from 'remark';
 import { selectAll } from 'unist-util-select';
 import yaml from 'yaml';
-import { request } from 'undici';
 
 import { TreeNode } from './types.js';
-import { readJSON } from './utils.js';
-import { config } from './config.js';
+import { readJSON, download, getRedirectLink } from './utils.js';
+import { config } from '../config.js';
 
-const { host, metaDir, outputDir } = config;
+const { host, metaDir, outputDir, userAgent } = config;
 const hostname = new URL(host).hostname;
 
 interface Options {
@@ -31,37 +28,52 @@ export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>)
     ])
     .process(docDetail.body);
 
-  doc.content = frontMatter(doc) + content.toString();
+  doc.content = frontMatter(docDetail) + content.toString();
   return doc;
 }
 
 function frontMatter(doc) {
   const frontMatter = yaml.stringify({
     title: doc.title,
-    slug: doc.slug,
-    public: doc.public,
-    status: doc.status,
-    description: doc.description,
+    url: `${host}/${doc.book.namespace}/${doc.slug}`,
+    // slug: doc.slug,
+    // public: doc.public,
+    // status: doc.status,
+    // description: doc.description,
   });
   return `---\n${frontMatter}\n---\n`;
 }
 
+// TODO: remove view=doc_embed
 function relativeLink({ doc, mapping }: Options) {
-  return tree => {
+  return async tree => {
     const links = selectAll('link', tree) as any as LinkNode[];
     for (const node of links) {
-      if (!node.url || !node.url.startsWith('http')) continue;
-      const urlObj = new URL(node.url);
-      if (urlObj.hostname === hostname) {
-        const targetNode = mapping[urlObj.pathname.substring(1)];
-        if (!targetNode) {
-          console.warn(`[WARN] ${node.url}, ${urlObj.pathname.substring(1)} not found`);
-        } else {
-          node.url = path.relative(path.dirname(doc.filePath), targetNode.filePath) + '.md';
-        }
+      if (!isYuqueLink(node.url)) continue;
+
+      if (node.url.startsWith(`${host}/docs/share/`)) {
+        node.url = await getRedirectLink(node.url, host);
+      }
+
+      // FIXME: yuque should not expose this param at markdown
+      node.url = node.url.replace('view=doc_embed', '');
+
+      const { pathname } = new URL(node.url);
+      const targetNode = mapping[pathname.substring(1)];
+      if (!targetNode) {
+        console.warn(`[WARN] ${node.url}, ${pathname.substring(1)} not found`);
+      } else {
+        node.url = path.relative(path.dirname(doc.filePath), targetNode.filePath) + '.md';
       }
     }
   };
+}
+
+function isYuqueLink(url?: string) {
+  if (!url) return false;
+  if (!url.startsWith(host)) return false;
+  if (url.startsWith(host + '/attachments/')) return false;
+  return true;
 }
 
 function downloadImage(opts: Options) {
@@ -73,27 +85,13 @@ function downloadImage(opts: Options) {
     for (const node of imageNodes) {
       if (!node.url || !node.url.startsWith('http')) continue;
       const filePath = path.join(assetsDir, getImageName(node.url));
-      await download(node.url, path.join(outputDir, filePath));
+      await download(node.url, path.join(outputDir, filePath), { headers: { 'User-Agent': userAgent } });
       node.url = path.relative(path.dirname(docFilePath), filePath);
     }
   };
 }
 
-async function download(url, filePath) {
-  const { body, statusCode } = await request(url, {
-    headers: {
-      'user-agent': 'yuque-exporter',
-    },
-  });
-
-  if (statusCode !== 200) {
-    return url;
-  }
-
-  await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-  await pipeline(body, fs.createWriteStream(filePath));
-}
-
+// TODO: add doc slug prefix
 function getImageName(url) {
   const pathName = new URL(url).pathname;
   return pathName.split('/').pop();
