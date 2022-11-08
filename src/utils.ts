@@ -1,6 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'yaml';
+import consola from 'consola';
+
+export const logger = consola;
 
 export async function readJSON(p: string, isYAML = false) {
   const content = await fs.readFile(p, 'utf-8');

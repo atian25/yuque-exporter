@@ -3,15 +3,15 @@ import { visit } from 'unist-util-visit';
 import { inspectNoColor } from 'unist-util-inspect';
 import { arrayToTree } from 'performant-array-to-tree';
 
-import type { DocInfo, Repository, TocInfo, TreeNode } from '../types';
-import { readJSON } from '../utils.js';
-import { config } from '../config.js';
+import type { DocInfo, Repository, TocInfo, TreeNode } from './types';
+import { readJSON } from './utils.js';
+import { config } from './config.js';
 const { metaDir } = config;
 
 interface TravelResult {
   node: TreeNode;
   index: number;
-  parent ?: TreeNode;
+  parent?: TreeNode;
 }
 
 export async function buildTree(repos: Repository[]) {
@@ -19,6 +19,7 @@ export async function buildTree(repos: Repository[]) {
     children: [] as TreeNode[],
     docs: {} as Record<string, TreeNode>,
 
+    // TODO: repos node could be travel
     travel(fn: (args: TravelResult) => void) {
       visit<TreeNode>(this as any, (node, index, parent?: TreeNode) => {
         if (!parent) return;

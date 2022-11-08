@@ -7,10 +7,9 @@ import { selectAll } from 'unist-util-select';
 import yaml from 'yaml';
 import { request } from 'undici';
 
-import { TreeNode } from '../types.js';
-import { readJSON } from '../utils.js';
-import { crawler } from '../crawler.js';
-import { config } from '../config.js';
+import { TreeNode } from './types.js';
+import { readJSON } from './utils.js';
+import { config } from './config.js';
 
 const { host, metaDir, outputDir } = config;
 const hostname = new URL(host).hostname;
@@ -28,6 +27,7 @@ export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>)
     .use([
       [ relativeLink, { doc, mapping }],
       [ downloadImage, { doc, mapping }],
+      // TODO: replace html tags such as <br />
     ])
     .process(docDetail.body);
 
@@ -52,12 +52,13 @@ function relativeLink({ doc, mapping }: Options) {
     for (const node of links) {
       if (!node.url || !node.url.startsWith('http')) continue;
       const urlObj = new URL(node.url);
-      const targetNode = mapping[urlObj.pathname.substring(1)];
-      if (!targetNode) {
-        console.warn(`[WARN] ${node.url}, ${urlObj.pathname.substring(1)} not found`);
-      }
-      if (urlObj.hostname === hostname && targetNode) {
-        node.url = path.relative(path.dirname(doc.filePath), targetNode.filePath) + '.md';
+      if (urlObj.hostname === hostname) {
+        const targetNode = mapping[urlObj.pathname.substring(1)];
+        if (!targetNode) {
+          console.warn(`[WARN] ${node.url}, ${urlObj.pathname.substring(1)} not found`);
+        } else {
+          node.url = path.relative(path.dirname(doc.filePath), targetNode.filePath) + '.md';
+        }
       }
     }
   };
@@ -72,7 +73,7 @@ function downloadImage(opts: Options) {
     for (const node of imageNodes) {
       if (!node.url || !node.url.startsWith('http')) continue;
       const filePath = path.join(assetsDir, getImageName(node.url));
-      await download(node.url, filePath);
+      await download(node.url, path.join(outputDir, filePath));
       node.url = path.relative(path.dirname(docFilePath), filePath);
     }
   };

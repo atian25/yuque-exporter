@@ -2,19 +2,21 @@ import path from 'path';
 import PQueue from 'p-queue';
 import fg from 'fast-glob';
 
-import type { Repository, TreeNode } from '../types.js';
-import { mkdir, readJSON, writeFile } from '../utils.js';
+import type { Repository, TreeNode } from './types.js';
+import { logger, mkdir, readJSON, writeFile } from './utils.js';
 import { buildDoc } from './doc.js';
 import { buildTree } from './tree.js';
-import { config } from '../config.js';
+import { config } from './config.js';
 const { outputDir, metaDir } = config;
 
 const taskQueue = new PQueue({ concurrency: 10 });
 
 export async function build() {
+  logger.info('Start building...');
+
   const repos = await listRepos();
   if (repos.length === 0) {
-    console.log(`No repos found at ${metaDir}`);
+    logger.warn(`No repos found at ${metaDir}`);
     return;
   }
 
@@ -25,7 +27,8 @@ export async function build() {
   const tasks: (() => Promise<void>)[] = [];
   for (const { node } of tree) {
     const fullPath = path.join(outputDir, node.filePath);
-    console.log(fullPath);
+    logger.success(fullPath);
+
     switch (node.type) {
       case 'TITLE':
         tasks.push(() => mkdir(fullPath));
@@ -46,6 +49,7 @@ export async function build() {
 
           const doc = await buildDoc(node, tree.docs);
           const fullPath = path.join(outputDir, `${doc.filePath}.md`);
+          // logger.success(`Building doc: ${fullPath}`);
           await writeFile(fullPath, doc.content);
         });
         break;
