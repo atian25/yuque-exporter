@@ -10,12 +10,11 @@ const { host, token, userAgent, metaDir } = config;
 const sdk = new SDK({ token, host, userAgent });
 const taskQueue = new PQueue({ concurrency: 10 });
 
-export async function crawl(inputs?: string[], clean = true) {
+export async function crawl(inputs = [ '' ], clean = false) {
   logger.info('Start crawling...');
   if (clean) await rm(metaDir);
 
   // if inputs is empty, crawl all repos of the user which associated with the token
-  if (!inputs) inputs = [ '' ];
 
   // find target repos
   const repoList = new Set<string>();

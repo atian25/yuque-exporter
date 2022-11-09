@@ -1,3 +1,4 @@
+import assert from 'assert/strict';
 import { request, Dispatcher } from 'undici';
 
 export interface User {
@@ -98,6 +99,7 @@ export class SDK {
     this.token = opts.token;
     this.host = opts.host || 'https://www.yuque.com';
     this.userAgent = opts.userAgent || 'yuque-sdk';
+    assert(this.token, 'Missing yuque token, see https://www.yuque.com/yuque/developer/api for more detail.');
   }
 
   async getUser(user = '') {

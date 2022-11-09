@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// yuque-exporter --token=<token>
+// yuque-exporter --token=<token> --host=<host> --outputDir=<outputDir> --clean=<clean>
 // yuque-exporter crawl --token=<token>
 // yuque-exporter build
 
@@ -10,10 +10,22 @@ import { start } from '../main.js';
 const options = {
   token: {
     type: 'string' as const,
+    description: 'yuque token',
   },
   host: {
     type: 'string' as const,
+    description: 'yuque host',
     default: 'https://www.yuque.com',
+  },
+  outputDir: {
+    type: 'string' as const,
+    description: 'output target directory',
+    default: './yuque',
+  },
+  clean: {
+    type: 'boolean' as const,
+    description: 'Whether clean the output target directory',
+    default: false,
   },
 };
 
