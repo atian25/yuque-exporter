@@ -9,26 +9,41 @@ import { readJSON, download, getRedirectLink } from './utils.js';
 import { config } from '../config.js';
 
 const { host, metaDir, outputDir, userAgent } = config;
-const hostname = new URL(host).hostname;
 
 interface Options {
   doc: TreeNode;
   mapping: Record<string, TreeNode>;
 }
 
-interface LinkNode { url: string; }
+interface ASTNode {
+  type: string;
+  children?: ASTNode[];
+}
+
+interface LinkNode extends ASTNode {
+  url: string;
+}
+
+interface HtmlNode extends ASTNode {
+  value: string;
+}
 
 export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>) {
   const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
   const content = await remark()
+    .data('settings', { bullet: '-', listItemIndent: 'one' })
     .use([
+      [ replaceHtml ],
       [ relativeLink, { doc, mapping }],
       [ downloadImage, { doc, mapping }],
-      // TODO: replace html tags such as <br />
     ])
     .process(docDetail.body);
 
   doc.content = frontMatter(docDetail) + content.toString();
+
+  // FIXME: remark will transform `*` to `\*`
+  doc.content = doc.content.replaceAll('\\*', '*');
+
   return doc;
 }
 
@@ -41,21 +56,33 @@ function frontMatter(doc) {
     // status: doc.status,
     // description: doc.description,
   });
-  return `---\n${frontMatter}\n---\n`;
+  return `---\n${frontMatter}---\n\n`;
 }
 
-// TODO: remove view=doc_embed
+function replaceHtml() {
+  return tree => {
+    const htmlNodes = selectAll('html', tree) as HtmlNode[];
+    for (const node of htmlNodes) {
+      if (node.value === '<br />' || node.value === '<br/>') {
+        node.type = 'text';
+        node.value = '\\n';
+      }
+    }
+  };
+}
+
 function relativeLink({ doc, mapping }: Options) {
   return async tree => {
     const links = selectAll('link', tree) as any as LinkNode[];
     for (const node of links) {
       if (!isYuqueLink(node.url)) continue;
 
+      // 语雀分享链接功能已下线，替换为 302 后的地址
       if (node.url.startsWith(`${host}/docs/share/`)) {
         node.url = await getRedirectLink(node.url, host);
       }
 
-      // FIXME: yuque should not expose this param at markdown
+      // 语雀链接有多种显示方式，其中一种会插入该参数，会导致点击后的页面缺少头部导航
       node.url = node.url.replace('view=doc_embed', '');
 
       const { pathname } = new URL(node.url);

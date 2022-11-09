@@ -17,9 +17,9 @@ export async function start({ urlPaths, options }: StartOptions = {}) {
   assert(config.token, 'Missing token, should provide process.env.YUQUE_TOKEN');
 
   // crawl yuque data
-  await rm(config.metaDir);
+  // await rm(config.metaDir);
 
-  await crawl(urlPaths);
+  // await crawl(urlPaths);
 
   // process yuque data
   await build();
