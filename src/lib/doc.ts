@@ -1,5 +1,6 @@
 import path from 'path';
 
+import type { Link, Text } from 'mdast';
 import { remark } from 'remark';
 import { selectAll } from 'unist-util-select';
 import yaml from 'yaml';
@@ -15,31 +16,18 @@ interface Options {
   mapping: Record<string, TreeNode>;
 }
 
-interface ASTNode {
-  type: string;
-  children?: ASTNode[];
-}
-
-interface LinkNode extends ASTNode {
-  url: string;
-}
-
-interface HtmlNode extends ASTNode {
-  value: string;
-}
-
 export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>) {
   const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
   const content = await remark()
     .data('settings', { bullet: '-', listItemIndent: 'one' })
     .use([
-      [ replaceHtml ],
+      [ replaceHTML ],
       [ relativeLink, { doc, mapping }],
-      [ downloadImage, { doc, mapping }],
+      [ downloadAsset, { doc, mapping }],
     ])
     .process(docDetail.body);
 
-  doc.content = frontMatter(docDetail) + content.toString();
+  doc.content = frontmatter(doc) + content.toString();
 
   // FIXME: remark will transform `*` to `\*`
   doc.content = doc.content.replaceAll('\\*', '*');
@@ -47,10 +35,10 @@ export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>)
   return doc;
 }
 
-function frontMatter(doc) {
+function frontmatter(doc) {
   const frontMatter = yaml.stringify({
     title: doc.title,
-    url: `${host}/${doc.book.namespace}/${doc.slug}`,
+    url: `${host}/${doc.namespace}/${doc.url}`,
     // slug: doc.slug,
     // public: doc.public,
     // status: doc.status,
@@ -59,13 +47,13 @@ function frontMatter(doc) {
   return `---\n${frontMatter}---\n\n`;
 }
 
-function replaceHtml() {
+function replaceHTML() {
   return tree => {
-    const htmlNodes = selectAll('html', tree) as HtmlNode[];
+    const htmlNodes = selectAll('html', tree) as Text[];
     for (const node of htmlNodes) {
       if (node.value === '<br />' || node.value === '<br/>') {
         node.type = 'text';
-        node.value = '\\n';
+        node.value = '\n';
       }
     }
   };
@@ -73,9 +61,9 @@ function replaceHtml() {
 
 function relativeLink({ doc, mapping }: Options) {
   return async tree => {
-    const links = selectAll('link', tree) as any as LinkNode[];
+    const links = selectAll('link', tree) as Link[];
     for (const node of links) {
-      if (!isYuqueLink(node.url)) continue;
+      if (!isYuqueDocLink(node.url)) continue;
 
       // 语雀分享链接功能已下线，替换为 302 后的地址
       if (node.url.startsWith(`${host}/docs/share/`)) {
@@ -96,30 +84,26 @@ function relativeLink({ doc, mapping }: Options) {
   };
 }
 
-function isYuqueLink(url?: string) {
+function isYuqueDocLink(url?: string) {
   if (!url) return false;
   if (!url.startsWith(host)) return false;
   if (url.startsWith(host + '/attachments/')) return false;
   return true;
 }
 
-function downloadImage(opts: Options) {
+function downloadAsset(opts: Options) {
   return async tree => {
     const docFilePath = opts.doc.filePath;
     const assetsDir = path.join(docFilePath.split('/')[0], 'assets');
 
-    const imageNodes = selectAll('image', tree) as any as LinkNode[];
-    for (const node of imageNodes) {
-      if (!node.url || !node.url.startsWith('http')) continue;
-      const filePath = path.join(assetsDir, getImageName(node.url));
+    // FIXME: 语雀附件现在不允许直接访问，需要登录后才能下载，这里先跳过。
+    // const assetNodes = selectAll(`image[url^=http], link[url^=${host}/attachments/]`, tree) as Link[];
+    const assetNodes = selectAll('image[url^=http]', tree) as Link[];
+    for (const node of assetNodes) {
+      const assetName = `${opts.doc.url}/${new URL(node.url).pathname.split('/').pop()}`;
+      const filePath = path.join(assetsDir, assetName);
       await download(node.url, path.join(outputDir, filePath), { headers: { 'User-Agent': userAgent } });
       node.url = path.relative(path.dirname(docFilePath), filePath);
     }
   };
-}
-
-// TODO: add doc slug prefix
-function getImageName(url) {
-  const pathName = new URL(url).pathname;
-  return pathName.split('/').pop();
 }

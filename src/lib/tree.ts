@@ -4,7 +4,7 @@ import { visit } from 'unist-util-visit';
 import { inspectNoColor } from 'unist-util-inspect';
 import { arrayToTree } from 'performant-array-to-tree';
 
-import type { DocInfo, Repository, TocInfo, TreeNode } from './types';
+import type { Doc, Repository, TocInfo, TreeNode } from './types';
 import { readJSON } from './utils.js';
 import { config } from '../config.js';
 const { metaDir } = config;
@@ -88,7 +88,7 @@ export async function buildRepoTree(repo: Repository) {
     children: [],
   };
 
-  const docs: DocInfo[] = await readJSON(path.join(metaDir, repo.namespace, 'docs.json'));
+  const docs: Doc[] = await readJSON(path.join(metaDir, repo.namespace, 'docs.json'));
   const toc: TocInfo[] = await readJSON(path.join(metaDir, repo.namespace, 'toc.json'));
 
   // collect toc items
@@ -121,7 +121,7 @@ export async function buildRepoTree(repo: Repository) {
       const node: TreeNode = {
         type: 'DRAFT_DOC',
         title: doc.title,
-        uuid: doc.id,
+        uuid: String(doc.id),
         parent_uuid: repoNode.uuid,
         url: doc.slug,
         namespace: repo.namespace,

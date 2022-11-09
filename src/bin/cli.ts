@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-// yuque-exporter --token=<token> --host=<host> --outputDir=<outputDir> --clean=<clean>
-// yuque-exporter crawl --token=<token>
-// yuque-exporter build
+// TODO: use yargs or artus-common-bin to refactor it
 
 import { parseArgs } from 'util';
-import { start } from '../main.js';
+import fs from 'fs/promises';
+
+import { config } from '../config.js';
+import { build } from '../lib/builder.js';
+import { crawl } from '../lib/crawler.js';
 
 const options = {
   token: {
@@ -20,12 +22,17 @@ const options = {
   outputDir: {
     type: 'string' as const,
     description: 'output target directory',
-    default: './yuque',
+    default: './storage',
   },
   clean: {
     type: 'boolean' as const,
     description: 'Whether clean the output target directory',
     default: false,
+  },
+  help: {
+    type: 'boolean' as const,
+    description: 'Show help',
+    short: 'h',
   },
 };
 
@@ -35,6 +42,33 @@ const argv = parseArgs({
   args: process.argv.slice(2),
 });
 
+if (argv.values.help) {
+  const content = await fs.readFile(new URL('./help.md', import.meta.url), 'utf-8');
+  console.log(content);
+  process.exit(0);
+}
+
 console.log(argv);
 
-await start({ options: argv.values });
+// set config
+Object.assign(config, argv.values);
+
+// execute command
+const [ command, ...repos ] = argv.positionals;
+switch (command) {
+  case 'crawl': {
+    await crawl(repos);
+    break;
+  }
+
+  case 'build': {
+    await build();
+    break;
+  }
+
+  default: {
+    await crawl(argv.positionals);
+    await build();
+    break;
+  }
+}

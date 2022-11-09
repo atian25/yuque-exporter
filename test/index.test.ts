@@ -6,25 +6,29 @@ import { remark } from 'remark';
 
 describe.only('test/index.test.js', () => {
   it('should work', async () => {
-    const result = await remark()
-      .use(() => tree => {
-        const a = selectAll('html', tree);
-        console.log(a);
-        for (const item of a) {
-          item.tagName = 'text';
-          item.value = '\\n';
-        }
-        // visit(tree, 'html', (node, index, parent) => {
-        //   console.log(node);
-        //   parent.children.splice(index, 1, {
-        //     type: 'text',
-        //     value: '\\n'
-        //   });
-        //   return [visit.SKIP, index];
-        // });
-      })
-      .process('## test \n xx <br /> bb \\n\\n**在日常交流中，也经常听到一些同学抱怨，你们大厂的很多场景，我们在日常工作中根本没法涉猎到，又如何才能累积经验，达到要求呢？**确实，目前的前');
+    const node = {
+      value: 'root',
+      children: [
+        { value: 'a' },
+        { value: 'b', [Symbol.iterator]: myIterator, children: [{ value: 'b1' }, { value: 'b2' }] },
+        { value: 'c' },
+      ],
+      [Symbol.iterator]: myIterator,
+    };
 
-    console.log(result.toString());
+    function* myIterator() {
+      yield this;
+      for (const child of this.children) {
+        if (child.children) {
+          yield* child;
+        } else {
+          yield child;
+        }
+      }
+    }
+
+    for (const item of node) {
+      console.log(item.value);
+    }
   });
 });

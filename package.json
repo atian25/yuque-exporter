@@ -1,5 +1,5 @@
 {
-  "name": "yuque-explorter",
+  "name": "yuque-exporter",
   "version": "1.0.0",
   "description": "export yuque to local markdown",
   "author": "TZ <atian25@qq.com>",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@artus/tsconfig": "^1.0.1",
+    "@types/mdast": "^3.0.10",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.11.7",
     "c8": "^7",

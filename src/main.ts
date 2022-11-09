@@ -26,7 +26,7 @@ if (import.meta.url.startsWith('file:')) {
   if (process.argv[1] === modulePath) {
     const urlPaths = [
       'atian25/test',
-      'atian25/blog',
+      // 'atian25/blog',
     ];
     await start({ urlPaths });
   }
