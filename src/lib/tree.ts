@@ -1,4 +1,5 @@
 import path from 'path';
+import filenamify from 'filenamify';
 import { visit } from 'unist-util-visit';
 import { inspectNoColor } from 'unist-util-inspect';
 import { arrayToTree } from 'performant-array-to-tree';
@@ -49,21 +50,21 @@ export async function buildTree(repos: Repository[]) {
 
   tree.travel(args => {
     const { node, parent } = args;
-    const { title, type, parent_uuid } = node;
+    const { type, parent_uuid } = node;
 
-    // TODO: use slug as key suffix
+    const title = filenamify(node.title, { replacement: '_' });
     const key = `${parent_uuid}/${type}/${title}`;
     const count = duplicateMap.get(key) || 0;
     if (count) {
-      node.filePath = `${node.title} ${count}`;
+      // TODO: whether use slug as key suffix?
+      node.filePath = `${title}_${count}`;
       duplicateMap.set(key, count + 1);
     } else {
-      node.filePath = node.title;
+      node.filePath = title;
       duplicateMap.set(key, 1);
     }
 
     if (parent.filePath) {
-      // TODO: sanitize-filename
       node.filePath = `${parent.filePath}/${node.filePath}`;
     }
 
