@@ -11,6 +11,7 @@ const { outputDir, metaDir } = config;
 
 const taskQueue = new PQueue({ concurrency: 10 });
 
+// TODO: support inputs so only build the specified repos
 export async function build() {
   logger.info('Start building...');
 
@@ -45,11 +46,9 @@ export async function build() {
       case 'DRAFT_DOC':
       case 'DOC':
         tasks.push(async () => {
-          // if (node.namespace !== 'atian25/test') return
-
           const doc = await buildDoc(node, tree.docs);
           const fullPath = path.join(outputDir, `${doc.filePath}.md`);
-          // logger.success(`Building doc: ${fullPath}`);
+          logger.success(`Building doc: ${fullPath}`);
           await writeFile(fullPath, doc.content);
         });
         break;

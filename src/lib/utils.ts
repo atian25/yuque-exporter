@@ -52,6 +52,7 @@ export async function download(url: string, filePath: string, opts: any = {}) {
       'User-Agent': 'yuque-exporter',
       ...headers,
     },
+    maxRedirections: 10,
     ...otherOpts,
   });
 

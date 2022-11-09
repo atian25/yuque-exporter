@@ -1,8 +1,6 @@
-import assert from 'assert/strict';
 import { fileURLToPath } from 'url';
 
 import { build } from './lib/builder.js';
-import { logger, rm } from './lib/utils.js';
 import { crawl } from './lib/crawler.js';
 import { config } from './config.js';
 
@@ -12,13 +10,10 @@ interface StartOptions {
 }
 
 export async function start({ urlPaths, options }: StartOptions = {}) {
+  // set config
   Object.assign(config, options);
 
-  assert(config.token, 'Missing token, should provide process.env.YUQUE_TOKEN');
-
   // crawl yuque data
-  await rm(config.metaDir);
-
   await crawl(urlPaths);
 
   // process yuque data
@@ -31,7 +26,7 @@ if (import.meta.url.startsWith('file:')) {
   if (process.argv[1] === modulePath) {
     const urlPaths = [
       'atian25/test',
-      'atian25/blog',
+      // 'atian25/blog',
     ];
     await start({ urlPaths });
   }

@@ -1,3 +1,5 @@
+export { User, Repo, RepoDetail, Doc, DocDetail } from './sdk.js';
+
 export interface Repository {
   type: string;
   slug: string;
@@ -14,13 +16,7 @@ export interface TocInfo {
   url?: string;
 }
 
-export interface DocInfo {
-  title: string;
-  slug: string;
-  id: string;
-}
-
-// TODO multi type node
+// TODO: multi type node
 export interface TreeNode {
   type: 'TITLE' | 'DOC' | 'UNCREATED_DOC' | 'LINK' | 'REPO' | 'DRAFT_DOC';
   children?: TreeNode[];

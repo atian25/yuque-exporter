@@ -1,5 +1,5 @@
 {
-  "name": "yuque-explorter",
+  "name": "yuque-exporter",
   "version": "1.0.0",
   "description": "export yuque to local markdown",
   "author": "TZ <atian25@qq.com>",
@@ -8,10 +8,10 @@
   "dependencies": {
     "consola": "^2.15.3",
     "fast-glob": "^3.2.12",
+    "filenamify": "^5.1.1",
     "p-queue": "^7.3.0",
     "performant-array-to-tree": "^1.11.0",
     "remark": "^14.0.2",
-    "sanitize-filename": "^1.6.3",
     "undici": "^5.12.0",
     "unist-util-inspect": "^7.0.1",
     "unist-util-select": "^4.0.1",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@artus/tsconfig": "^1.0.1",
+    "@types/mdast": "^3.0.10",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.11.7",
     "c8": "^7",

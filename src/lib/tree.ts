@@ -1,9 +1,10 @@
 import path from 'path';
+import filenamify from 'filenamify';
 import { visit } from 'unist-util-visit';
 import { inspectNoColor } from 'unist-util-inspect';
 import { arrayToTree } from 'performant-array-to-tree';
 
-import type { DocInfo, Repository, TocInfo, TreeNode } from './types';
+import type { Doc, Repository, TocInfo, TreeNode } from './types';
 import { readJSON } from './utils.js';
 import { config } from '../config.js';
 const { metaDir } = config;
@@ -49,21 +50,21 @@ export async function buildTree(repos: Repository[]) {
 
   tree.travel(args => {
     const { node, parent } = args;
-    const { title, type, parent_uuid } = node;
+    const { type, parent_uuid } = node;
 
-    // TODO: use slug as key suffix
+    const title = filenamify(node.title, { replacement: '_' });
     const key = `${parent_uuid}/${type}/${title}`;
     const count = duplicateMap.get(key) || 0;
     if (count) {
-      node.filePath = `${node.title} ${count}`;
+      // TODO: whether use slug as key suffix?
+      node.filePath = `${title}_${count}`;
       duplicateMap.set(key, count + 1);
     } else {
-      node.filePath = node.title;
+      node.filePath = title;
       duplicateMap.set(key, 1);
     }
 
     if (parent.filePath) {
-      // TODO: sanitize-filename
       node.filePath = `${parent.filePath}/${node.filePath}`;
     }
 
@@ -87,7 +88,7 @@ export async function buildRepoTree(repo: Repository) {
     children: [],
   };
 
-  const docs: DocInfo[] = await readJSON(path.join(metaDir, repo.namespace, 'docs.json'));
+  const docs: Doc[] = await readJSON(path.join(metaDir, repo.namespace, 'docs.json'));
   const toc: TocInfo[] = await readJSON(path.join(metaDir, repo.namespace, 'toc.json'));
 
   // collect toc items
@@ -120,7 +121,7 @@ export async function buildRepoTree(repo: Repository) {
       const node: TreeNode = {
         type: 'DRAFT_DOC',
         title: doc.title,
-        uuid: doc.id,
+        uuid: String(doc.id),
         parent_uuid: repoNode.uuid,
         url: doc.slug,
         namespace: repo.namespace,

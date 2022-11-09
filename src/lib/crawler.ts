@@ -5,17 +5,17 @@ import yaml from 'yaml';
 import { SDK } from './sdk.js';
 import { logger, writeFile, rm } from './utils.js';
 import { config } from '../config.js';
-const { host, token, userAgent, metaDir } = config;
+const { host, token, userAgent, clean, metaDir } = config;
 
 const sdk = new SDK({ token, host, userAgent });
 const taskQueue = new PQueue({ concurrency: 10 });
 
-export async function crawl(inputs?: string[], clean = true) {
+export async function crawl(inputs?: string[]) {
   logger.info('Start crawling...');
   if (clean) await rm(metaDir);
 
   // if inputs is empty, crawl all repos of the user which associated with the token
-  if (!inputs) inputs = [ '' ];
+  if (!inputs || inputs.length === 0) inputs = [ '' ];
 
   // find target repos
   const repoList = new Set<string>();
