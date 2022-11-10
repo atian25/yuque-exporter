@@ -3,10 +3,9 @@ yuque-exporter [...repos] [options]
 export yuque docs to local
 
 Usages:
-  yuque-exporter --token=<your_token>
-  yuque-exporter --token=<your_token> eggjs
-  yuque-exporter --token=<your_token> atian25/test atian25/blog
   YUQUE_TOKEN=<your_token> yuque-exporter
+  YUQUE_TOKEN=<your_token> yuque-exporter eggjs
+  YUQUE_TOKEN=<your_token> yuque-exporter atian25/test atian25/blog
 
 Commands:
   yuque-exporter [...repos]     export yuque docs to local             [default]

@@ -1,6 +1,6 @@
 {
   "name": "yuque-exporter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "export yuque to local markdown",
   "author": "TZ <atian25@qq.com>",
   "type": "module",

@@ -16,7 +16,7 @@
 需提前申请语雀 TOKEN，请参考[文档](https://www.yuque.com/yuque/developer/api#785a3731)。
 
 ```bash
-$ npx yuque-exporter --token=<your token>
+$ YUQUE_TOKEN=<your_token> npx yuque-exporter
 ```
 
 更详细的命令行说明参见：[Help](./src/bin/help.md)

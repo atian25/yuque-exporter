@@ -10,6 +10,7 @@ import { build } from '../lib/builder.js';
 import { crawl } from '../lib/crawler.js';
 
 const options = {
+  // FIXME: SDK init too fast so this args don't work correctly
   token: {
     type: 'string' as const,
     description: 'yuque token',
