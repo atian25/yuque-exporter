@@ -47,9 +47,11 @@ export async function build() {
       case 'DOC':
         tasks.push(async () => {
           const doc = await buildDoc(node, tree.docs);
-          const fullPath = path.join(outputDir, `${doc.filePath}.md`);
-          logger.success(`Building doc: ${fullPath}`);
-          await writeFile(fullPath, doc.content);
+          if (doc !== null) {
+            const fullPath = path.join(outputDir, `${doc.filePath}.md`);
+            logger.success(`Building doc: ${fullPath}`);
+            await writeFile(fullPath, doc.content);
+          }
         });
         break;
 

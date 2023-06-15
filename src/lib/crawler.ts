@@ -1,9 +1,10 @@
 import path from 'path';
 import PQueue from 'p-queue';
 import yaml from 'yaml';
+import fg from 'fast-glob';
 
 import { SDK } from './sdk.js';
-import { logger, writeFile, rm } from './utils.js';
+import { logger, writeFile, rm, readJSON } from './utils.js';
 import { config } from '../config.js';
 const { host, token, userAgent, clean, metaDir } = config;
 
@@ -56,19 +57,33 @@ export async function crawlRepo(namespace: string) {
   const repo = await sdk.getRepoDetail(namespace);
   const toc = yaml.parse(repo.toc_yml);
   const docList = await sdk.getDocs(namespace);
+  const docsPublishedAtKey = 'docs-published-at';
 
   await saveToStorage(`${namespace}/repo.json`, repo);
   await saveToStorage(`${namespace}/toc.json`, toc);
   await saveToStorage(`${namespace}/docs.json`, docList);
+  await saveToStorage(`${namespace}/docs-published-at.json`, Object.fromEntries(
+    [ ...docList.entries() ].map(([ index, doc ]) => [ doc.id, doc.published_at ]),
+  ));
 
   // crawl repo docs
-  const docs = await taskQueue.addAll(docList.map(doc => {
-    return async () => {
-      logger.success(` - [${doc.title}](${host}/${namespace}/${doc.slug})`);
-      const docDetail = await sdk.getDocDetail(namespace, doc.slug);
-      await saveToStorage(`${namespace}/docs/${doc.slug}.json`, docDetail);
-    };
-  }));
+  const docsPublishedAtPath = await fg('**/docs-published-at.json', { cwd: metaDir, deep: 3 });
+  const docsPublishedAtMap: Record<number, string> = await readJSON(path.join(metaDir, docsPublishedAtPath[0]));
+  // throw new Error(JSON.stringify(docsPublishedAtMap));
+  const docChangedList = docList
+    .filter(doc => typeof docsPublishedAtMap[doc.id] === 'undefined' || docsPublishedAtMap[doc.id] !== doc.published_at);
+  let docs = [];
+  if (docChangedList.length) {
+    docs = await taskQueue.addAll(docChangedList.map(doc => {
+      return async () => {
+        logger.success(` - [${doc.title}](${host}/${namespace}/${doc.slug})`);
+        const docDetail = await sdk.getDocDetail(namespace, doc.slug);
+        await saveToStorage(`${namespace}/docs/${doc.slug}.json`, docDetail);
+      };
+    }));
+  } else {
+    logger.info('Stop crawling, nothing new');
+  }
 
   logger.log('');
 
