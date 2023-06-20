@@ -4,12 +4,15 @@ import type { Link, Text } from 'mdast';
 import { remark } from 'remark';
 import { selectAll } from 'unist-util-select';
 import yaml from 'yaml';
+import fg from 'fast-glob';
 
 import { TreeNode } from './types.js';
 import { readJSON, download, getRedirectLink } from './utils.js';
 import { config } from '../config.js';
 
 const { host, metaDir, outputDir, userAgent } = config;
+const docsPublishedAtPath = await fg('**/docs-published-at.json', { cwd: metaDir, deep: 3 });
+const docsPublishedAtMap = await readJSON(path.join(metaDir, docsPublishedAtPath[0]));
 
 interface Options {
   doc: TreeNode;
@@ -18,6 +21,9 @@ interface Options {
 
 export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>) {
   const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
+  if (typeof docsPublishedAtMap[docDetail.id] !== 'undefined' && docsPublishedAtMap[docDetail.id] === docDetail.published_at) {
+    return null;
+  }
   const content = await remark()
     .data('settings', { bullet: '-', listItemIndent: 'one' })
     .use([
