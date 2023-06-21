@@ -5,9 +5,8 @@
 import { parseArgs } from 'util';
 import fs from 'fs/promises';
 
+import { Exporter } from '../main.js';
 import { config } from '../config.js';
-import { build } from '../lib/builder.js';
-import { crawl } from '../lib/crawler.js';
 
 const options = {
   token: {
@@ -48,27 +47,26 @@ if (argv.values.help) {
   process.exit(0);
 }
 
-console.log(argv);
-
 // set config
 Object.assign(config, argv.values);
+
+const exporter = new Exporter(config);
 
 // execute command
 const [ command, ...repos ] = argv.positionals;
 switch (command) {
   case 'crawl': {
-    await crawl(repos);
+    await exporter.crawler.run(repos);
     break;
   }
 
   case 'build': {
-    await build();
+    await exporter.builder.run();
     break;
   }
 
   default: {
-    await crawl(argv.positionals);
-    await build();
+    await exporter.run({ urlPaths: argv.positionals });
     break;
   }
 }

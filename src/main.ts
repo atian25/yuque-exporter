@@ -1,7 +1,5 @@
-import { fileURLToPath } from 'url';
-
-import { build } from './lib/builder.js';
-import { crawl } from './lib/crawler.js';
+import { Builder } from './lib/builder.js';
+import { Crawler } from './lib/crawler.js';
 import { config } from './config.js';
 
 interface StartOptions {
@@ -9,25 +7,32 @@ interface StartOptions {
   options?: Partial<typeof config>;
 }
 
-export async function start({ urlPaths, options }: StartOptions = {}) {
-  // set config
-  Object.assign(config, options);
+export class Exporter {
+  crawler: Crawler;
+  builder: Builder;
+  constructor(options: Partial<typeof config>) {
+    this.crawler = new Crawler(options);
+    this.builder = new Builder(options);
+  }
+  async run({ urlPaths }: StartOptions = {}) {
+    // crawl yuque data
+    await this.crawler.run(urlPaths);
 
-  // crawl yuque data
-  await crawl(urlPaths);
-
-  // process yuque data
-  await build();
-}
-
-// Determining if an ESM module is main then run the code
-if (import.meta.url.startsWith('file:')) {
-  const modulePath = fileURLToPath(import.meta.url);
-  if (process.argv[1] === modulePath) {
-    const urlPaths = [
-      'atian25/test',
-      // 'atian25/blog',
-    ];
-    await start({ urlPaths });
+    // process yuque data
+    await this.builder.run();
   }
 }
+
+// const exporter = new Exporter(config);
+
+// // Determining if an ESM module is main then run the code
+// if (import.meta.url.startsWith('file:')) {
+//   const modulePath = fileURLToPath(import.meta.url);
+//   if (process.argv[1] === modulePath) {
+//     const urlPaths = [
+//       'bufeidefeiyang/blog',
+//       // 'atian25/blog',
+//     ];
+//     await exporter.run({ urlPaths });
+//   }
+// }
