@@ -1,14 +1,14 @@
 import path from 'path';
 
 import type { Link, Text } from 'mdast';
-import { remark } from 'remark';
+import remark from 'remark';
 import { selectAll } from 'unist-util-select';
 import yaml from 'yaml';
 import fg from 'fast-glob';
 
-import { TreeNode } from './types.js';
-import { readJSON, download, getRedirectLink } from './utils.js';
-import { config } from '../config.js';
+import { TreeNode } from './types';
+import { readJSON, download, getRedirectLink } from './utils';
+import { config } from '../config/default';
 
 interface Options {
   doc: TreeNode;

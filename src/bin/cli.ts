@@ -1,72 +1,54 @@
 #!/usr/bin/env node
 
 // TODO: use yargs or artus-common-bin to refactor it
+// import path from 'path';
+// import { fileURLToPath } from 'url';
+import { start } from '@artus-cli/artus-cli';
 
-import { parseArgs } from 'util';
-import fs from 'fs/promises';
+// const { start } = require('@artus-cli/artus-cli');
 
-import { Exporter } from '../main.js';
-import { config } from '../config.js';
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
+// import { parseArgs } from 'util';
+// import fs from 'fs/promises';
 
-const options = {
-  token: {
-    type: 'string' as const,
-    description: 'yuque token',
-  },
-  host: {
-    type: 'string' as const,
-    description: 'yuque host',
-    default: 'https://www.yuque.com',
-  },
-  outputDir: {
-    type: 'string' as const,
-    description: 'output target directory',
-    default: './storage',
-  },
-  clean: {
-    type: 'boolean' as const,
-    description: 'Whether clean the output target directory',
-    default: false,
-  },
-  help: {
-    type: 'boolean' as const,
-    description: 'Show help',
-    short: 'h',
-  },
-};
+// import { Exporter } from '../main.js';
+// import { config } from '../config.js';
 
-const argv = parseArgs({
-  options,
-  allowPositionals: true,
-  args: process.argv.slice(2),
-});
+start();
 
-if (argv.values.help) {
-  const content = await fs.readFile(new URL('./help.md', import.meta.url), 'utf-8');
-  console.log(content);
-  process.exit(0);
-}
+// const argv = parseArgs({
+//   options,
+//   allowPositionals: true,
+//   args: process.argv.slice(2),
+// });
 
-// set config
-Object.assign(config, argv.values);
+// if (argv.values.help) {
+//   const content = await fs.readFile(new URL('./help.md', import.meta.url), 'utf-8');
+//   console.log(content);
+//   process.exit(0);
+// }
 
-const exporter = new Exporter(config);
+// // set config
+// Object.assign(config, argv.values);
 
-// execute command
-const [ command, ...repos ] = argv.positionals;
-switch (command) {
-  case 'crawl': {
-    await exporter.crawler.run(repos);
-    break;
-  }
+// const exporter = new Exporter(config);
 
-  case 'build': {
-    await exporter.builder.run();
-    break;
-  }
+// // execute command
+// const [ command, ...repos ] = argv.positionals;
+// switch (command) {
+//   case 'crawl': {
+//     await exporter.crawler.run(repos);
+//     break;
+//   }
 
-  default: {
-    await exporter.run({ urlPaths: argv.positionals });
-    break;
-  }
-}
+//   case 'build': {
+//     await exporter.builder.run();
+//     break;
+//   }
+
+//   default: {
+//     await exporter.run({ urlPaths: argv.positionals });
+//     break;
+//   }
+// }

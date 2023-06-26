@@ -79,7 +79,7 @@ export interface DocDetail extends Doc {
 }
 
 export interface SDKOptions {
-  token: string;
+  token?: string;
   host?: string;
   userAgent?: string;
 }

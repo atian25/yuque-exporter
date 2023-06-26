@@ -3,9 +3,10 @@ import PQueue from 'p-queue';
 import yaml from 'yaml';
 import fg from 'fast-glob';
 
-import { SDK } from './sdk.js';
-import { logger, writeFile, rm, readJSON } from './utils.js';
-import { config } from '../config.js';
+import { SDK, Doc } from './sdk';
+import { TocInfo } from './types';
+import { logger, writeFile, rm, readJSON } from './utils';
+import { config } from '../config/default';
 
 export class Crawler {
   config: Partial<typeof config>;
@@ -18,7 +19,7 @@ export class Crawler {
     this.sdk = new SDK({ token, host, userAgent });
     this.taskQueue = new PQueue({ concurrency: 10 });
   }
-  async run(inputs?: string[]) {
+  async start(inputs?: string[]) {
     logger.info('Start crawling...');
 
     const { clean, metaDir } = this.config;
@@ -66,18 +67,15 @@ export class Crawler {
     // crawl repo detail/docs/toc
     logger.success(`Crawling repo detail: ${host}/${namespace}`);
     const repo = await this.sdk.getRepoDetail(namespace);
-    const toc = yaml.parse(repo.toc_yml);
+    const toc: TocInfo[] = yaml.parse(repo.toc_yml);
     const docList = await this.sdk.getDocs(namespace);
 
     // crawl repo docs
-    const docsPublishedAtPath = await fg('**/docs-published-at.json', { cwd: metaDir, deep: 3 });
-    const docsPublishedAtMap: Record<number, string> = typeof docsPublishedAtPath[0] === 'string'
-      ? await readJSON(path.join(metaDir, docsPublishedAtPath[0]))
-      : {};
+    const docsMapPath: string = (await fg('**/docs-map.json', { cwd: metaDir, deep: 3 }))
+      .find(path => path.startsWith(namespace)) || '';
+    const docsMap: Record<number, Doc> = docsMapPath ? await readJSON(path.join(metaDir, docsMapPath)) : {};
     const docChangedList = docList
-      .filter(doc => typeof docsPublishedAtMap[doc.id] === 'undefined' || docsPublishedAtMap[doc.id] !== doc.published_at);
-    console.log(metaDir);
-    console.log(docsPublishedAtMap);
+      .filter(doc => typeof docsMap[doc.id] === 'undefined' || docsMap[doc.id].published_at !== doc.published_at);
     let docs = [];
     if (docChangedList.length) {
       docs = await this.taskQueue.addAll(docChangedList.map(doc => {
@@ -88,7 +86,7 @@ export class Crawler {
         };
       }));
     } else {
-      logger.info('Stop crawling, nothing new');
+      logger.success('Stop crawling, nothing new');
     }
 
     logger.log('');
@@ -97,8 +95,8 @@ export class Crawler {
     await this.saveToStorage(`${namespace}/repo.json`, repo);
     await this.saveToStorage(`${namespace}/toc.json`, toc);
     await this.saveToStorage(`${namespace}/docs.json`, docList);
-    await this.saveToStorage(`${namespace}/docs-published-at.json`, Object.fromEntries(
-      [ ...docList.entries() ].map(([ , doc ]) => [ doc.id, doc.published_at ]),
+    await this.saveToStorage(`${namespace}/docs-map.json`, Object.fromEntries(
+      [ ...docList.entries() ].map(([ , doc ]) => [ doc.id, doc ]),
     ));
 
     return { repo, toc, docList, docs };

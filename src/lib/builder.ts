@@ -2,11 +2,11 @@ import path from 'path';
 import PQueue from 'p-queue';
 import fg from 'fast-glob';
 
-import type { Repository, TreeNode } from './types.js';
-import { logger, mkdir, readJSON, writeFile } from './utils.js';
-import { Doc } from './doc.js';
-import { Tree } from './tree.js';
-import { config } from '../config.js';
+import type { Repository } from './types';
+import { logger, mkdir, readJSON, writeFile } from './utils';
+import { Doc } from './doc';
+import { Tree } from './tree';
+import { config } from '../config/default';
 
 export class Builder {
   config: Partial<typeof config>;
@@ -20,12 +20,12 @@ export class Builder {
     this.tree = new Tree(options);
   }
   // TODO: support inputs so only build the specified repos
-  async run() {
+  async start(inputs?: string[]) {
     logger.info('Start building...');
 
     const { metaDir, outputDir } = this.config;
 
-    const repos = await this.listRepos();
+    const repos = await this.listRepos(inputs);
     if (repos.length === 0) {
       logger.warn(`No repos found at ${metaDir}`);
       return;
@@ -74,11 +74,12 @@ export class Builder {
     // TODO: only warn when error
     await this.taskQueue.addAll(tasks);
   }
-  async listRepos(): Promise<Repository[]> {
+  async listRepos(inputs?: string[]): Promise<Repository[]> {
     const { metaDir } = this.config;
 
     const repos = [];
-    const reposPath = await fg('**/repo.json', { cwd: metaDir, deep: 3 });
+    let reposPath: string[] = (await fg('**/repo.json', { cwd: metaDir, deep: 3 }));
+    reposPath = inputs && inputs.length ? reposPath.filter(path => inputs.some(input => path.startsWith(input))) : reposPath;
     for (const repoPath of reposPath) {
       const repoInfo: Repository = await readJSON(path.join(metaDir, repoPath));
       if (repoInfo.type === 'Book') {

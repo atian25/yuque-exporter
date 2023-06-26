@@ -1,12 +1,12 @@
 import path from 'path';
 import filenamify from 'filenamify';
-import { visit } from 'unist-util-visit';
-import { inspectNoColor } from 'unist-util-inspect';
+import visit from 'unist-util-visit';
+// import inspect from 'unist-util-inspect';
 import { arrayToTree } from 'performant-array-to-tree';
 
 import type { Doc, Repository, TocInfo, TreeNode } from './types';
-import { readJSON } from './utils.js';
-import { config } from '../config.js';
+import { readJSON } from './utils';
+import { config } from '../config/default';
 
 interface TravelResult {
   node: TreeNode;
@@ -26,7 +26,7 @@ export class Tree {
 
       // TODO: repos node could be travel
       travel(fn: (args: TravelResult) => void) {
-        visit<TreeNode>(this as any, (node, index, parent?: TreeNode) => {
+        visit<TreeNode>(this as any, null, (node, index, parent) => {
           if (!parent) return;
           fn({ node, index, parent });
         });
@@ -39,7 +39,8 @@ export class Tree {
       },
 
       inspect() {
-        return console.log(inspectNoColor(this.children));
+        // TODO: unist-util-inspect old api type compatibility
+        // return console.log(inspect.noColor(this.children));
       },
     };
 
