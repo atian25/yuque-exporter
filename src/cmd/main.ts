@@ -23,7 +23,7 @@ export class MainCommand extends Command {
   @Option({ alias: 'h', description: 'Show help' })
   help: boolean;
 
-  @Option({ default: [ '' ], description: 'inputs' })
+  @Option()
   inputs: string[];
 
   config: Partial<typeof config> = config;
@@ -40,38 +40,9 @@ export class MainCommand extends Command {
     const { token, host, outputDir, clean, help } = this;
     Object.assign(this.config, { token, host, outputDir, clean, help });
   }
+  // TODO: user config support
   // async loadUserConfig() {
   //   this.userConfig = await import(path.join(__dirname, this.config.configPath));
   //   console.log(this.userConfig);
   // }
 }
-
-// export class Exporter {
-//   crawler: Crawler;
-//   builder: Builder;
-//   constructor(options: Partial<typeof config>) {
-//     this.crawler = new Crawler(options);
-//     this.builder = new Builder(options);
-//   }
-//   async run({ urlPaths }: StartOptions = {}) {
-//     // crawl yuque data
-//     await this.crawler.run(urlPaths);
-
-//     // process yuque data
-//     await this.builder.run();
-//   }
-// }
-
-// const exporter = new Exporter(config);
-
-// // Determining if an ESM module is main then run the code
-// if (import.meta.url.startsWith('file:')) {
-//   const modulePath = fileURLToPath(import.meta.url);
-//   if (process.argv[1] === modulePath) {
-//     const urlPaths = [
-//       'bufeidefeiyang/blog',
-//       // 'atian25/blog',
-//     ];
-//     await exporter.run({ urlPaths });
-//   }
-// }

@@ -6,7 +6,7 @@ import { selectAll } from 'unist-util-select';
 import yaml from 'yaml';
 import fg from 'fast-glob';
 
-import { TreeNode } from './types';
+import { TreeNode, Doc as TypeDoc, DocDetail } from './types';
 import { readJSON, download, getRedirectLink } from './utils';
 import { config } from '../config/default';
 
@@ -17,24 +17,32 @@ interface Options {
 
 export class Doc {
   config: Partial<typeof config>;
-  docsPublishedAtPath: string[];
-  docsPublishedAtMap: Record<string, string>;
+  docsMapPaths: string[];
+  docsMapStore: Record<string, Record<number, TypeDoc>> = {};
   constructor(options: Partial<typeof config>) {
     this.config = options;
     const { metaDir } = this.config;
     (async () => {
-      this.docsPublishedAtPath = await fg('**/docs-published-at.json', { cwd: metaDir, deep: 3 });
-      this.docsPublishedAtMap = typeof this.docsPublishedAtPath[0] === 'string'
-        ? await readJSON(path.join(metaDir, this.docsPublishedAtPath[0]))
-        : {};
+      this.docsMapPaths = (await fg('**/docs-map.json', { cwd: metaDir, deep: 3 }));
     })();
   }
   async build(doc: TreeNode, mapping: Record<string, TreeNode>) {
     const { metaDir } = this.config;
-    const docDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
-    if (typeof this.docsPublishedAtMap[docDetail.id] !== 'undefined' && this.docsPublishedAtMap[docDetail.id] === docDetail.published_at) {
+
+    // read docs-map.json if it doesn't exsit in docsMapStore
+    if (!this.docsMapStore[doc.namespace]) {
+      const docMapPath = this.docsMapPaths.find(path => path.startsWith(doc.namespace));
+      this.docsMapStore[doc.namespace] = docMapPath ? await readJSON(path.join(metaDir, docMapPath)) : {};
+    }
+
+    // stop building when doc exists
+    const docDetail: DocDetail = await readJSON(path.join(metaDir, doc.namespace, 'docs', `${doc.url}.json`));
+    const docsMap = this.docsMapStore[doc.namespace];
+    if (typeof docsMap[docDetail.id] !== 'undefined' && docsMap[docDetail.id].published_at === docDetail.published_at) {
       return null;
     }
+
+    // build with remark
     const content = await remark()
       .data('settings', { bullet: '-', listItemIndent: 'one' })
       .use([

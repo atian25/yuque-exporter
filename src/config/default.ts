@@ -7,7 +7,6 @@ export const config = {
   outputDir: './storage',
   configPath: './yuque-exporter.config.js',
   clean: false,
-  repos: '',
   get metaDir() {
     return path.join(config.outputDir, '.meta');
   },
