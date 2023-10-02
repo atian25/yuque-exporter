@@ -3,6 +3,7 @@ import path from 'path';
 import type { Link, Text } from 'mdast';
 import { remark } from 'remark';
 import { selectAll } from 'unist-util-select';
+import decodeUriComponent from 'decode-uri-component';
 import yaml from 'yaml';
 
 import { TreeNode } from './types.js';
@@ -27,7 +28,7 @@ export async function buildDoc(doc: TreeNode, mapping: Record<string, TreeNode>)
     ])
     .process(docDetail.body);
 
-  doc.content = frontmatter(doc) + content.toString();
+  doc.content = frontmatter(doc) + recoverMathBlocks(content.toString());
 
   // FIXME: remark will transform `*` to `\*`
   doc.content = doc.content.replaceAll('\\*', '*');
@@ -100,10 +101,26 @@ function downloadAsset(opts: Options) {
     // const assetNodes = selectAll(`image[url^=http], link[url^=${host}/attachments/]`, tree) as Link[];
     const assetNodes = selectAll('image[url^=http]', tree) as Link[];
     for (const node of assetNodes) {
-      const assetName = `${opts.doc.url}/${new URL(node.url).pathname.split('/').pop()}`;
-      const filePath = path.join(assetsDir, assetName);
-      await download(node.url, path.join(outputDir, filePath), { headers: { 'User-Agent': userAgent } });
-      node.url = path.relative(path.dirname(docFilePath), filePath);
+      const urlObject = new URL(node.url);
+      if (!urlObject.pathname.includes('__latex')) {
+        const assetName = `${opts.doc.url}/${urlObject.pathname.split('/').pop()}`;
+        const filePath = path.join(assetsDir, assetName);
+        await download(node.url, path.join(outputDir, filePath), { headers: { 'User-Agent': userAgent } });
+        node.url = path.relative(path.dirname(docFilePath), filePath);
+      }
     }
   };
+}
+
+function recoverMathBlocks(mdstring) {
+  // 替换所有公式链接为公式本身。
+  return mdstring.replaceAll(
+    /\!\[\]\(https.*?\/\_\_latex\/.*?\&code\=(.*?)\\\&.*?\)/g,
+    (match, p1, offset, string) => {
+      const mathExp = decodeUriComponent(p1);
+      return mathExp.includes('\\begin') || mathExp.includes('$')
+        ? `\$\$\n${mathExp}\n\$\$`
+        : `\$${mathExp}\$`;
+    }
+  );
 }
